@@ -294,8 +294,7 @@ public class MainActivity extends Activity {
 
         // --- АВТОРСТВО И КОПИРАЙТ В САМОМ КОНЦЕ ---
         TextView creditsView = new TextView(this);
-        creditsView.setText("GlyphLens v1.1 • Created by EstherTMB
-Crafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setText("GlyphLens v1.1 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
         creditsView.setTextColor(Color.parseColor("#607D8B"));
         creditsView.setTextSize(11.5f);
         creditsView.setGravity(Gravity.CENTER_HORIZONTAL);
