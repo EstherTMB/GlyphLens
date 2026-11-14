@@ -17,6 +17,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import java.io.InputStream;
 
@@ -28,13 +29,14 @@ public class CalibrationActivity extends Activity {
     private TextView scaleValueText;
     private TextView squashValueText;
     private TextView offsetValueText;
+    private int screenHeightPx;
 
-    // ВАЖНО: Мы больше не создаем здесь GlyphCanvasView!
-    // Мы только управляем ползунками и отправляем команды в работающий OverlayService.
-    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        screenHeightPx = dm.heightPixels;
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -107,23 +109,24 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(squashSeek);
 
-        // Ползунок сдвига Y
-        int currOffset = AppPrefs.getCanvasOffsetYDp(this);
+        // Ползунок сдвига Y (Абсолютный)
+        int currOffset = AppPrefs.getCanvasAbsoluteY(this);
+        if (currOffset == -1) currOffset = screenHeightPx / 3;
+
         offsetValueText = new TextView(this);
-        offsetValueText.setText("Сдвиг по вертикали: " + currOffset + " dp");
+        offsetValueText.setText("Сдвиг по вертикали (Абс.): " + currOffset + " px");
         offsetValueText.setTextColor(Color.WHITE);
         offsetValueText.setTextSize(13f);
         offsetValueText.setPadding(0, dpToPx(6), 0, dpToPx(2));
         controlPanel.addView(offsetValueText);
 
         SeekBar offsetSeek = new SeekBar(this);
-        offsetSeek.setMax(700); // Расширяем лимит от -350 до +350 dp для точной подгонки на длинных экранах
-        offsetSeek.setProgress(currOffset + 350);
+        offsetSeek.setMax(screenHeightPx); 
+        offsetSeek.setProgress(currOffset);
         offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = progress - 350;
-                offsetValueText.setText("Сдвиг по вертикали: " + val + " dp");
-                AppPrefs.setCanvasOffsetYDp(CalibrationActivity.this, val);
+                offsetValueText.setText("Сдвиг по вертикали (Абс.): " + progress + " px");
+                AppPrefs.setCanvasAbsoluteY(CalibrationActivity.this, progress);
                 notifyServiceRefresh();
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
@@ -187,6 +190,7 @@ public class CalibrationActivity extends Activity {
             finish();
             return;
         }
+        
         Intent intent = new Intent(this, OverlayService.class);
         intent.setAction(OverlayService.ACTION_CALIBRATION_ENTER);
         startService(intent);

@@ -53,6 +53,8 @@ public class OverlayService extends Service {
     private final GlyphStroke[] recordedStrokes = new GlyphStroke[5];
     private int activeMaxGlyphs = 5;
     private int currentSlotIndex = 0;
+    
+    private int overlayType;
 
     @Override
     public void onCreate() {
@@ -79,7 +81,7 @@ public class OverlayService extends Service {
     }
 
     private void initOverlayViews() {
-        int overlayType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+        overlayType = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
         int btnSize = dpToPx(42);
@@ -117,7 +119,13 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int canvasSize = screenW - dpToPx(16);
         
-        canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+        // ВАЖНО: Добавляем FLAG_LAYOUT_NO_LIMITS и FLAG_LAYOUT_IN_SCREEN
+        // чтобы оверлей рисовался от физического края экрана, игнорируя статус-бар!
+        canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, 
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | 
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, 
+                PixelFormat.TRANSLUCENT);
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
         topBarLayout = new LinearLayout(this);
@@ -146,7 +154,12 @@ public class OverlayService extends Service {
         closeButton.setOnClickListener(v -> onCloseOverlayClicked());
         topBarLayout.addView(closeButton, closeLp);
 
-        topBarParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+        // И для панели кнопок тоже добавляем флаги игнорирования системных панелей
+        topBarParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, overlayType, 
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | 
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN, 
+                PixelFormat.TRANSLUCENT);
         topBarParams.gravity = Gravity.TOP | Gravity.LEFT;
 
         windowManager.addView(glyphCanvasView, canvasParams);
@@ -255,6 +268,11 @@ public class OverlayService extends Service {
             glyphCanvasView.setCalibrationPreview(false);
         }
 
+        // Базовые флаги, которые должны быть ВСЕГДА
+        int baseFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE 
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS 
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+
         switch (newState) {
             case COLLAPSED:
                 quickPickerRow.setVisibility(View.GONE);
@@ -266,19 +284,19 @@ public class OverlayService extends Service {
                 break;
             case EXPANDED_RECORD:
                 glyphCanvasView.setRecordMode(true);
-                canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                canvasParams.flags = baseFlags;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
             case EXPANDED_REPLAY:
                 glyphCanvasView.setRecordMode(false);
                 glyphCanvasView.setDisplayedStroke(recordedStrokes[currentSlotIndex]);
-                canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                canvasParams.flags = baseFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
             case CALIBRATION:
                 glyphCanvasView.setRecordMode(false);
                 glyphCanvasView.setCalibrationPreview(true);
-                canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                canvasParams.flags = baseFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
         }
@@ -315,22 +333,17 @@ public class OverlayService extends Service {
         for (SlotButtonView slotBtn : slotButtons) slotBtn.setLineColor(lineColor);
 
         DisplayMetrics dm = getResources().getDisplayMetrics();
-        int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        // ИСПРАВЛЕНИЕ: Теперь мы вычисляем абсолютную позицию Y с самого верха экрана,
-        // игнорируя то, как навигационная панель ужимает высоту окна!
+        // Берем АБСОЛЮТНУЮ позицию
         int absoluteY = AppPrefs.getCanvasAbsoluteY(this);
         if (absoluteY == -1) {
-            int canvasSize = screenW - dpToPx(16);
-            absoluteY = (screenH - canvasSize) / 2; // Начальное центрирование только при первом запуске
+            // Только при самом первом запуске ставим примерно по центру
+            absoluteY = screenH / 3;
             AppPrefs.setCanvasAbsoluteY(this, absoluteY);
         }
         
-        // Позиция Y строго отталкивается от верхнего угла экрана (Gravity.TOP)
-        int finalY = absoluteY + dpToPx(AppPrefs.getCanvasOffsetYDp(this));
-
-        canvasParams.y = finalY;
+        canvasParams.y = absoluteY;
         windowManager.updateViewLayout(glyphCanvasView, canvasParams);
 
         float scale = AppPrefs.getGridScalePercent(this) / 100f;
@@ -338,7 +351,7 @@ public class OverlayService extends Service {
         glyphCanvasView.setGridGeometry(scale, squash);
 
         topBarParams.x = dpToPx(12);
-        topBarParams.y = Math.max(dpToPx(30), finalY - dpToPx(55));
+        topBarParams.y = Math.max(dpToPx(30), absoluteY - dpToPx(55));
         windowManager.updateViewLayout(topBarLayout, topBarParams);
     }
 
