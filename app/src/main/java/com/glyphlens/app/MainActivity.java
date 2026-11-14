@@ -26,6 +26,10 @@ public class MainActivity extends Activity {
 
     private Button toggleServiceBtn;
     private RadioGroup maxGlyphsGroup;
+    private TextView scaleLabel;
+    private SeekBar scaleSeek;
+    private TextView offsetLabel;
+    private SeekBar offsetSeek;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +41,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateServiceButtonState();
+        refreshCalibrationSlidersFromPrefs();
     }
 
     private View buildUi() {
@@ -190,6 +195,11 @@ public class MainActivity extends Activity {
         return scrollView;
     }
 
+    private void refreshCalibrationSlidersFromPrefs() {
+        // Мы убрали ползунки калибровки с главного экрана, но метод оставим пустым,
+        // чтобы не ломать вызовы из onResume.
+    }
+
     private void addSectionHeader(LinearLayout parent, String text) {
         TextView tv = new TextView(this);
         tv.setText(text); tv.setTextColor(Color.parseColor("#4FC3F7")); tv.setTextSize(14f); tv.setTypeface(null, android.graphics.Typeface.BOLD); tv.setPadding(0, dpToPx(22), 0, dpToPx(8));
@@ -230,6 +240,14 @@ public class MainActivity extends Activity {
             toggleServiceBtn.setText("TERMINATE (ОСТАНОВИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
         } else {
             toggleServiceBtn.setText("START OVERLAY (ЗАПУСТИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
+        }
+    }
+
+    private void notifyServicePrefsChanged() {
+        if (OverlayService.isRunning()) {
+            Intent intent = new Intent(this, OverlayService.class);
+            intent.setAction(OverlayService.ACTION_REFRESH_PREFS);
+            startService(intent);
         }
     }
 

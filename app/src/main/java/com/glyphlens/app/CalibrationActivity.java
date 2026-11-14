@@ -29,6 +29,9 @@ public class CalibrationActivity extends Activity {
     private TextView squashValueText;
     private TextView offsetValueText;
 
+    // ВАЖНО: Мы больше не создаем здесь GlyphCanvasView!
+    // Мы только управляем ползунками и отправляем команды в работающий OverlayService.
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,9 +42,6 @@ public class CalibrationActivity extends Activity {
         screenshotView = new ImageView(this);
         screenshotView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         root.addView(screenshotView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-
-        // В этом активити мы БОЛЬШЕ НЕ РИСУЕМ сетку!
-        // Она будет рисоваться самим OverlayService прямо поверх этого экрана.
 
         LinearLayout controlPanel = new LinearLayout(this);
         controlPanel.setOrientation(LinearLayout.VERTICAL);
@@ -117,11 +117,11 @@ public class CalibrationActivity extends Activity {
         controlPanel.addView(offsetValueText);
 
         SeekBar offsetSeek = new SeekBar(this);
-        offsetSeek.setMax(500); 
-        offsetSeek.setProgress(currOffset + 250);
+        offsetSeek.setMax(700); // Расширяем лимит от -350 до +350 dp для точной подгонки на длинных экранах
+        offsetSeek.setProgress(currOffset + 350);
         offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = progress - 250;
+                int val = progress - 350;
                 offsetValueText.setText("Сдвиг по вертикали: " + val + " dp");
                 AppPrefs.setCanvasOffsetYDp(CalibrationActivity.this, val);
                 notifyServiceRefresh();
@@ -187,7 +187,6 @@ public class CalibrationActivity extends Activity {
             finish();
             return;
         }
-        
         Intent intent = new Intent(this, OverlayService.class);
         intent.setAction(OverlayService.ACTION_CALIBRATION_ENTER);
         startService(intent);

@@ -117,7 +117,6 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int canvasSize = screenW - dpToPx(16);
         
-        // ВАЖНО: Привязка холста строго к Gravity.TOP, чтобы не зависеть от скрытой панели навигации!
         canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
@@ -294,7 +293,7 @@ public class OverlayService extends Service {
         
         if (currentState == State.CALIBRATION) {
             bubbleContainer.setVisibility(View.GONE); 
-            topBarLayout.setVisibility(View.VISIBLE); // Оставили видимой, чтобы видеть, где она будет
+            topBarLayout.setVisibility(View.VISIBLE); 
             glyphCanvasView.setVisibility(View.VISIBLE);
         } else if (currentState == State.COLLAPSED || currentState == State.PICKER) {
             bubbleContainer.setVisibility(View.VISIBLE); 
@@ -319,16 +318,16 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        // --- ГЛАВНОЕ ИЗМЕНЕНИЕ ---
-        // Если координата Y еще не была сохранена, вычисляем ее один раз по центру.
+        // ИСПРАВЛЕНИЕ: Теперь мы вычисляем абсолютную позицию Y с самого верха экрана,
+        // игнорируя то, как навигационная панель ужимает высоту окна!
         int absoluteY = AppPrefs.getCanvasAbsoluteY(this);
         if (absoluteY == -1) {
             int canvasSize = screenW - dpToPx(16);
-            absoluteY = (screenH - canvasSize) / 2;
+            absoluteY = (screenH - canvasSize) / 2; // Начальное центрирование только при первом запуске
             AppPrefs.setCanvasAbsoluteY(this, absoluteY);
         }
         
-        // Теперь мы просто берем эту абсолютную базу и прибавляем к ней ползунок смещения
+        // Позиция Y строго отталкивается от верхнего угла экрана (Gravity.TOP)
         int finalY = absoluteY + dpToPx(AppPrefs.getCanvasOffsetYDp(this));
 
         canvasParams.y = finalY;

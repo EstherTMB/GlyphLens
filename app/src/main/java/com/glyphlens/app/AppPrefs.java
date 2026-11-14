@@ -14,7 +14,7 @@ public class AppPrefs {
     private static final String KEY_BG_ALPHA = "bg_alpha";
     private static final String KEY_GRID_SCALE = "grid_scale";
     private static final String KEY_GRID_SQUASH = "grid_squash";
-    // Теперь это абсолютная координата Y в пикселях от верхнего левого угла экрана
+    private static final String KEY_CANVAS_OFFSET_Y = "canvas_offset_y"; // Оставим старое имя для совместимости, но суть поменялась
     private static final String KEY_CANVAS_ABSOLUTE_Y = "canvas_absolute_y";
     private static final String KEY_BUBBLE_X = "bubble_x";
     private static final String KEY_BUBBLE_Y = "bubble_y";
@@ -47,6 +47,10 @@ public class AppPrefs {
     // Возвращает абсолютную Y-координату. Если ещё не задана, возвращает -1
     public static int getCanvasAbsoluteY(Context context) { return prefs(context).getInt(KEY_CANVAS_ABSOLUTE_Y, -1); }
     public static void setCanvasAbsoluteY(Context context, int yPx) { prefs(context).edit().putInt(KEY_CANVAS_ABSOLUTE_Y, yPx).apply(); }
+
+    // ИСПРАВЛЕНИЕ: Вернули методы OffsetYDp, чтобы MainActivity компилировалась без ошибок
+    public static int getCanvasOffsetYDp(Context context) { return prefs(context).getInt(KEY_CANVAS_OFFSET_Y, 20); }
+    public static void setCanvasOffsetYDp(Context context, int offsetDp) { prefs(context).edit().putInt(KEY_CANVAS_OFFSET_Y, Math.max(-350, Math.min(350, offsetDp))).apply(); }
 
     public static int getBubbleX(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_X, defaultVal); }
     public static int getBubbleY(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_Y, defaultVal); }
