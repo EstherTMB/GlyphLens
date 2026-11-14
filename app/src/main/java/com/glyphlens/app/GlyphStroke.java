@@ -7,8 +7,7 @@ import java.util.List;
 
 /**
  * Хранит один нарисованный глиф в виде нормализованных координат (от 0.0 до 1.0).
- * Благодаря этому один и тот же глиф можно идеально отрисовать и на большом холсте,
- * и внутри маленького кружка-превью на верхней панели!
+ * Содержит вычисление длины росчерка для фильтрации случайных касаний пальцем.
  */
 public class GlyphStroke {
     private final List<PointF> points = new ArrayList<>();
@@ -23,6 +22,24 @@ public class GlyphStroke {
 
     public void clear() {
         points.clear();
+    }
+
+    /**
+     * Вычисляет реальную длину проведённой линии в пикселях на холсте (width x height).
+     * Используется для отсеивания случайных одиночных тычков («защита от кривых рук»).
+     */
+    public float getTotalLengthPx(float width, float height) {
+        if (points.size() < 2) return 0f;
+        float total = 0f;
+        PointF prev = points.get(0);
+        for (int i = 1; i < points.size(); i++) {
+            PointF curr = points.get(i);
+            float dx = (curr.x - prev.x) * width;
+            float dy = (curr.y - prev.y) * height;
+            total += (float) Math.hypot(dx, dy);
+            prev = curr;
+        }
+        return total;
     }
 
     /**

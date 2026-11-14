@@ -26,6 +26,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Полноэкранный экран калибровки по скриншоту из игры -->
+        <activity
+            android:name=".CalibrationActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
         <service
             android:name=".OverlayService"
             android:enabled="true"

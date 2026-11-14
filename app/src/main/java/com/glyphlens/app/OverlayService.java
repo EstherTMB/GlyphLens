@@ -19,16 +19,15 @@ import android.widget.LinearLayout;
 
 /**
  * Главный фоновый сервис плавающего окна GlyphLens.
- * Управляет состояниями:
- * 1) COLLAPSED — маленький плавающий кружок на краю экрана (с цифрой 1..5 или знаком "?").
- * 2) PICKER    — быстрый выбор количества глифов [1][2][3][4][5] (если включён режим "?").
- * 3) EXPANDED  — полноразмерный холст с верхней панелью слотов (в режиме ЗАПИСИ или СКВОЗНОЙ КАЛЬКИ).
+ * Включает раздельные кнопки "C" (стереть глифы) и "✕" (закрыть окно в один клик).
  */
 public class OverlayService extends Service {
 
     public static final String ACTION_START = "com.glyphlens.app.ACTION_START";
     public static final String ACTION_REFRESH_PREFS = "com.glyphlens.app.ACTION_REFRESH_PREFS";
     public static final String ACTION_TOGGLE_HIDE = "com.glyphlens.app.ACTION_TOGGLE_HIDE";
+    public static final String ACTION_CALIBRATION_ENTER = "com.glyphlens.app.ACTION_CALIBRATION_ENTER";
+    public static final String ACTION_CALIBRATION_EXIT = "com.glyphlens.app.ACTION_CALIBRATION_EXIT";
     public static final String ACTION_STOP = "com.glyphlens.app.ACTION_STOP";
 
     private static final String CHANNEL_ID = "glyphlens_overlay_channel";
@@ -49,6 +48,7 @@ public class OverlayService extends Service {
     private WindowManager windowManager;
     private State currentState = State.COLLAPSED;
     private boolean isHiddenByNotification = false;
+    private boolean isPausedForCalibration = false;
 
     // 1. Плавающий кружок (в свёрнутом состоянии) и ряд быстрого выбора 1..5
     private LinearLayout bubbleContainer;
@@ -56,13 +56,14 @@ public class OverlayService extends Service {
     private LinearLayout quickPickerRow;
     private WindowManager.LayoutParams bubbleParams;
 
-    // 2. Верхняя панель управления со слотами (в развёрнутом виде) — всегда кликабельна!
+    // 2. Верхняя панель управления со слотами + отдельные кнопки "C" и "✕"
     private LinearLayout topBarLayout;
     private final SlotButtonView[] slotButtons = new SlotButtonView[5];
     private SlotButtonView clearButton;
+    private SlotButtonView closeButton;
     private WindowManager.LayoutParams topBarParams;
 
-    // 3. Большой квадратный холст глифов — в режиме кальки получает FLAG_NOT_TOUCHABLE!
+    // 3. Большой квадратный холст глифов
     private GlyphCanvasView glyphCanvasView;
     private WindowManager.LayoutParams canvasParams;
 
@@ -93,6 +94,13 @@ public class OverlayService extends Service {
                 isHiddenByNotification = !isHiddenByNotification;
                 updateVisibility();
                 updateNotification();
+            } else if (ACTION_CALIBRATION_ENTER.equals(action)) {
+                isPausedForCalibration = true;
+                updateVisibility();
+            } else if (ACTION_CALIBRATION_EXIT.equals(action)) {
+                isPausedForCalibration = false;
+                applyPreferences();
+                updateVisibility();
             } else if (ACTION_REFRESH_PREFS.equals(action)) {
                 applyPreferences();
             }
@@ -167,7 +175,7 @@ public class OverlayService extends Service {
         );
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
-        // --- В. ВЕРХНЯЯ ПАНЕЛЬ СЛОТОВ (1..5 + КНОПКА C) ---
+        // --- В. ВЕРХНЯЯ ПАНЕЛЬ: СЛОТЫ 1..5 + КНОПКА "C" (СБРОС) + КНОПКА "✕" (ЗАКРЫТЬ) ---
         topBarLayout = new LinearLayout(this);
         topBarLayout.setOrientation(LinearLayout.HORIZONTAL);
         topBarLayout.setGravity(Gravity.CENTER_VERTICAL);
@@ -176,7 +184,7 @@ public class OverlayService extends Service {
             final int slotIdx = i;
             SlotButtonView slotBtn = new SlotButtonView(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(btnSize, btnSize);
-            lp.rightMargin = dpToPx(6);
+            lp.rightMargin = dpToPx(5);
             slotBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -187,16 +195,31 @@ public class OverlayService extends Service {
             topBarLayout.addView(slotBtn, lp);
         }
 
+        // Кнопка "C" — только очищает нарисованные глифы и возвращает запись на 1-й слот
         clearButton = new SlotButtonView(this);
         clearButton.setLabelText("C");
         LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(dpToPx(38), dpToPx(38));
+        clearLp.rightMargin = dpToPx(5);
         clearButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onClearButtonClicked();
+                onClearOnlyClicked();
             }
         });
         topBarLayout.addView(clearButton, clearLp);
+
+        // Кнопка "✕" — мгновенно очищает и сворачивает окно в поплавок с первого нажатия
+        closeButton = new SlotButtonView(this);
+        closeButton.setLabelText("✕");
+        closeButton.setCloseButtonStyle(true);
+        LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dpToPx(38), dpToPx(38));
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onCloseOverlayClicked();
+            }
+        });
+        topBarLayout.addView(closeButton, closeLp);
 
         topBarParams = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -312,26 +335,30 @@ public class OverlayService extends Service {
         }
     }
 
-    private void onClearButtonClicked() {
-        boolean hasAnyGlyph = false;
-        for (int i = 0; i < activeMaxGlyphs; i++) {
-            if (recordedStrokes[i] != null) {
-                hasAnyGlyph = true;
-                break;
-            }
+    /**
+     * Действие кнопки "C": только очищает все слоты и начинает запись заново, не закрывая окно.
+     */
+    private void onClearOnlyClicked() {
+        for (int i = 0; i < 5; i++) {
+            recordedStrokes[i] = null;
+            slotButtons[i].setStroke(null);
         }
+        currentSlotIndex = 0;
+        updateSlotSelectionRing();
+        switchToState(State.EXPANDED_RECORD);
+    }
 
-        if (hasAnyGlyph) {
-            for (int i = 0; i < 5; i++) {
-                recordedStrokes[i] = null;
-                slotButtons[i].setStroke(null);
-            }
-            currentSlotIndex = 0;
-            updateSlotSelectionRing();
-            switchToState(State.EXPANDED_RECORD);
-        } else {
-            switchToState(State.COLLAPSED);
+    /**
+     * Действие кнопки "✕": мгновенно очищает слоты и сворачивает линзу обратно в поплавок.
+     */
+    private void onCloseOverlayClicked() {
+        for (int i = 0; i < 5; i++) {
+            recordedStrokes[i] = null;
+            slotButtons[i].setStroke(null);
         }
+        currentSlotIndex = 0;
+        updateSlotSelectionRing();
+        switchToState(State.COLLAPSED);
     }
 
     private void updateSlotSelectionRing() {
@@ -372,7 +399,7 @@ public class OverlayService extends Service {
     }
 
     private void updateVisibility() {
-        if (isHiddenByNotification) {
+        if (isHiddenByNotification || isPausedForCalibration) {
             bubbleContainer.setVisibility(View.GONE);
             topBarLayout.setVisibility(View.GONE);
             glyphCanvasView.setVisibility(View.GONE);
@@ -414,7 +441,7 @@ public class OverlayService extends Service {
         int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
 
         int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
-        int canvasLeftX = (screenW - canvasSize) / 2;
+        int canvasLeftX = Math.max(dpToPx(6), (screenW - canvasSize) / 2);
 
         canvasParams.width = canvasSize;
         canvasParams.height = canvasSize;

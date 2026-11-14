@@ -10,15 +10,12 @@ import android.graphics.Color;
 public class AppPrefs {
     private static final String PREFS_NAME = "glyphlens_prefs";
 
-    // Режим выбора количества глифов:
-    // false = Жёстко заданное количество (1..5), на кружке пишется цифра
-    // true  = Спрашивать при нажатии на кружок, на кружке пишется "?"
     private static final String KEY_ASK_BEFORE_HACK = "ask_before_hack";
     private static final String KEY_FIXED_MAX_GLYPHS = "fixed_max_glyphs";
     private static final String KEY_SHOW_GUIDE = "show_guide";
     private static final String KEY_LINE_COLOR = "line_color";
     private static final String KEY_BG_ALPHA = "bg_alpha"; // 15..75 (%)
-    private static final String KEY_CANVAS_SCALE = "canvas_scale"; // 65..100 (%)
+    private static final String KEY_CANVAS_SCALE = "canvas_scale"; // 65..105 (%)
     private static final String KEY_CANVAS_OFFSET_Y = "canvas_offset_y"; // -150..+150 (dp)
     private static final String KEY_BUBBLE_X = "bubble_x";
     private static final String KEY_BUBBLE_Y = "bubble_y";
@@ -53,7 +50,6 @@ public class AppPrefs {
     }
 
     public static int getLineColor(Context context) {
-        // По умолчанию — классический зелёный цвет глифа (#00E676)
         return prefs(context).getInt(KEY_LINE_COLOR, Color.parseColor("#00E676"));
     }
 
@@ -61,11 +57,6 @@ public class AppPrefs {
         prefs(context).edit().putInt(KEY_LINE_COLOR, color).apply();
     }
 
-    /**
-     * Непрозрачность фона в процентах (от 15% до 75%).
-     * Важно: потолок в 75% гарантирует, что на Android 12+ защита от Tapjacking
-     * никогда не заблокирует сквозные нажатия в игру!
-     */
     public static int getBgAlphaPercent(Context context) {
         return prefs(context).getInt(KEY_BG_ALPHA, 55);
     }
@@ -76,11 +67,11 @@ public class AppPrefs {
     }
 
     public static int getCanvasScalePercent(Context context) {
-        return prefs(context).getInt(KEY_CANVAS_SCALE, 94);
+        return prefs(context).getInt(KEY_CANVAS_SCALE, 96);
     }
 
     public static void setCanvasScalePercent(Context context, int percent) {
-        int clamped = Math.max(65, Math.min(100, percent));
+        int clamped = Math.max(65, Math.min(105, percent));
         prefs(context).edit().putInt(KEY_CANVAS_SCALE, clamped).apply();
     }
 

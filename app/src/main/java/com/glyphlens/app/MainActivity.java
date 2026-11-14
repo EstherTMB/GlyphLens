@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
@@ -23,12 +24,15 @@ import android.widget.Toast;
 
 /**
  * Экран настроек и запуска сервиса GlyphLens.
- * Построен полностью программно в чистом Java-коде без лишних XML-шаблонов.
  */
 public class MainActivity extends Activity {
 
     private Button toggleServiceBtn;
     private RadioGroup maxGlyphsGroup;
+    private TextView scaleLabel;
+    private SeekBar scaleSeek;
+    private TextView offsetLabel;
+    private SeekBar offsetSeek;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +44,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateServiceButtonState();
+        refreshCalibrationSlidersFromPrefs();
     }
 
     private View buildUi() {
@@ -61,7 +66,7 @@ public class MainActivity extends Activity {
         root.addView(title);
 
         TextView subtitle = new TextView(this);
-        subtitle.setText("Оптическая шпаргалка-линза глифов для Ingress Prime");
+        subtitle.setText("Оптическая шпаргалка-линза глифов для Ingress");
         subtitle.setTextColor(Color.parseColor("#90A4AE"));
         subtitle.setTextSize(14f);
         subtitle.setPadding(0, dpToPx(4), 0, dpToPx(18));
@@ -69,7 +74,7 @@ public class MainActivity extends Activity {
 
         // Главная кнопка ЗАПУСТИТЬ / ОСТАНОВИТЬ
         toggleServiceBtn = new Button(this);
-        toggleServiceBtn.setTextSize(16f);
+        toggleServiceBtn.setTextSize(15f);
         toggleServiceBtn.setTextColor(Color.WHITE);
         toggleServiceBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,16 +90,16 @@ public class MainActivity extends Activity {
         addSectionHeader(root, "1. КОЛИЧЕСТВО ГЛИФОВ И ПОПЛАВОК");
 
         Switch askSwitch = new Switch(this);
-        askSwitch.setText("Спрашивать перед взломом (знак «?» на кружке)");
+        askSwitch.setText("Спрашивать перед взломом (на кружке горит «?», а максимум глифов выбирается при нажатии на него, а не в настройках)");
         askSwitch.setTextColor(Color.WHITE);
         askSwitch.setChecked(AppPrefs.isAskBeforeHack(this));
         root.addView(askSwitch);
 
         final TextView fixedHint = new TextView(this);
-        fixedHint.setText("Лимит глифов для фиксированного режима (на кружке отображается выбранная цифра):");
+        fixedHint.setText("Максимальное количество глифов (в фиксированном режиме выбранная цифра отображается на кружке):");
         fixedHint.setTextColor(Color.parseColor("#B0BEC5"));
         fixedHint.setTextSize(13f);
-        fixedHint.setPadding(0, dpToPx(10), 0, dpToPx(6));
+        fixedHint.setPadding(0, dpToPx(12), 0, dpToPx(6));
         root.addView(fixedHint);
 
         maxGlyphsGroup = new RadioGroup(this);
@@ -192,7 +197,7 @@ public class MainActivity extends Activity {
         // Прозрачность фона
         final TextView alphaLabel = new TextView(this);
         int currAlpha = AppPrefs.getBgAlphaPercent(this);
-        alphaLabel.setText("Непрозрачность фона линзы: " + currAlpha + "% (безопасно для Android 12+)");
+        alphaLabel.setText("Непрозрачность фона линзы: " + currAlpha + "%");
         alphaLabel.setTextColor(Color.WHITE);
         alphaLabel.setPadding(0, dpToPx(14), 0, dpToPx(4));
         root.addView(alphaLabel);
@@ -204,7 +209,7 @@ public class MainActivity extends Activity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 int val = 15 + progress;
-                alphaLabel.setText("Непрозрачность фона линзы: " + val + "% (безопасно для Android 12+)");
+                alphaLabel.setText("Непрозрачность фона линзы: " + val + "%");
                 AppPrefs.setBgAlphaPercent(MainActivity.this, val);
                 notifyServicePrefsChanged();
             }
@@ -214,17 +219,42 @@ public class MainActivity extends Activity {
         root.addView(alphaSeek);
 
         // --- РАЗДЕЛ 3: КАЛИБРОВКА ПОД ЭКРАН ---
-        addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS PRIME");
+        addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS");
 
-        final TextView scaleLabel = new TextView(this);
+        TextView calibHint = new TextView(this);
+        calibHint.setText("Для точной подгонки сделайте в Ingress скриншот открытого окна Glyph Hack и загрузите его в режиме калибровки:");
+        calibHint.setTextColor(Color.parseColor("#B0BEC5"));
+        calibHint.setTextSize(13f);
+        calibHint.setPadding(0, dpToPx(2), 0, dpToPx(10));
+        root.addView(calibHint);
+
+        Button openCalibBtn = new Button(this);
+        openCalibBtn.setText("КАЛИБРОВАТЬ ПО СКРИНШОТУ");
+        openCalibBtn.setTextSize(14f);
+        openCalibBtn.setTextColor(Color.WHITE);
+        openCalibBtn.setBackgroundColor(Color.parseColor("#0277BD"));
+        openCalibBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, CalibrationActivity.class);
+                startActivity(intent);
+            }
+        });
+        LinearLayout.LayoutParams calibBtnLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(46)
+        );
+        calibBtnLp.bottomMargin = dpToPx(10);
+        root.addView(openCalibBtn, calibBtnLp);
+
+        scaleLabel = new TextView(this);
         int currScale = AppPrefs.getCanvasScalePercent(this);
         scaleLabel.setText("Размер квадрата поля: " + currScale + "% от ширины экрана");
         scaleLabel.setTextColor(Color.WHITE);
         scaleLabel.setPadding(0, dpToPx(6), 0, dpToPx(4));
         root.addView(scaleLabel);
 
-        SeekBar scaleSeek = new SeekBar(this);
-        scaleSeek.setMax(35); // 65% .. 100%
+        scaleSeek = new SeekBar(this);
+        scaleSeek.setMax(40); // 65% .. 105%
         scaleSeek.setProgress(currScale - 65);
         scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -239,14 +269,14 @@ public class MainActivity extends Activity {
         });
         root.addView(scaleSeek);
 
-        final TextView offsetLabel = new TextView(this);
+        offsetLabel = new TextView(this);
         int currOffset = AppPrefs.getCanvasOffsetYDp(this);
         offsetLabel.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
         offsetLabel.setTextColor(Color.WHITE);
         offsetLabel.setPadding(0, dpToPx(12), 0, dpToPx(4));
         root.addView(offsetLabel);
 
-        SeekBar offsetSeek = new SeekBar(this);
+        offsetSeek = new SeekBar(this);
         offsetSeek.setMax(300); // -150 .. +150 dp
         offsetSeek.setProgress(currOffset + 150);
         offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -262,8 +292,31 @@ public class MainActivity extends Activity {
         });
         root.addView(offsetSeek);
 
+        // --- АВТОРСТВО И КОПИРАЙТ В САМОМ КОНЦЕ ---
+        TextView creditsView = new TextView(this);
+        creditsView.setText("GlyphLens v1.1 • Created by EstherTMB
+Crafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setTextColor(Color.parseColor("#607D8B"));
+        creditsView.setTextSize(11.5f);
+        creditsView.setGravity(Gravity.CENTER_HORIZONTAL);
+        creditsView.setPadding(0, dpToPx(32), 0, dpToPx(12));
+        root.addView(creditsView);
+
         updateServiceButtonState();
         return scrollView;
+    }
+
+    private void refreshCalibrationSlidersFromPrefs() {
+        if (scaleSeek != null && scaleLabel != null) {
+            int currScale = AppPrefs.getCanvasScalePercent(this);
+            scaleSeek.setProgress(currScale - 65);
+            scaleLabel.setText("Размер квадрата поля: " + currScale + "% от ширины экрана");
+        }
+        if (offsetSeek != null && offsetLabel != null) {
+            int currOffset = AppPrefs.getCanvasOffsetYDp(this);
+            offsetSeek.setProgress(currOffset + 150);
+            offsetLabel.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
+        }
     }
 
     private void addSectionHeader(LinearLayout parent, String text) {
@@ -298,7 +351,6 @@ public class MainActivity extends Activity {
             return;
         }
 
-        // Проверяем разрешение на отображение поверх других окон (Android 6.0+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "Выдайте разрешение «Поверх других окон» для GlyphLens", Toast.LENGTH_LONG).show();
             Intent intent = new Intent(

@@ -13,7 +13,7 @@ import android.view.View;
 /**
  * Круглая кнопка для верхней панели и поплавка GlyphLens:
  * - Отображает либо слот глифа (1..5) с миниатюрой нарисованной линии внутри,
- * - Либо текстовую метку (например, кнопку "C", знак "?" или цифры 1..5).
+ * - Либо текстовую метку ("C", "✕", "?" или цифры 1..5).
  */
 public class SlotButtonView extends View {
     private final Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -24,6 +24,7 @@ public class SlotButtonView extends View {
     private String labelText = null;
     private GlyphStroke stroke = null;
     private boolean isSelected = false;
+    private boolean isCloseStyle = false;
     private int lineColor = Color.parseColor("#00E676");
 
     public SlotButtonView(Context context) {
@@ -61,16 +62,31 @@ public class SlotButtonView extends View {
         invalidate();
     }
 
+    /**
+     * Особый цветовой стиль для кнопки закрытия "✕", чтобы её никогда не путали с "C".
+     */
+    public void setCloseButtonStyle(boolean closeStyle) {
+        this.isCloseStyle = closeStyle;
+        updateShader(getHeight());
+        invalidate();
+    }
+
     public void setLineColor(int color) {
         this.lineColor = color;
         glyphPaint.setColor(color);
         invalidate();
     }
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        if (h > 0) {
+    private void updateShader(int h) {
+        if (h <= 0) return;
+        if (isCloseStyle) {
+            bgPaint.setShader(new LinearGradient(
+                    0, 0, 0, h,
+                    Color.parseColor("#6D3242"),
+                    Color.parseColor("#A84E64"),
+                    Shader.TileMode.CLAMP
+            ));
+        } else {
             bgPaint.setShader(new LinearGradient(
                     0, 0, 0, h,
                     Color.parseColor("#4F74A8"),
@@ -78,6 +94,12 @@ public class SlotButtonView extends View {
                     Shader.TileMode.CLAMP
             ));
         }
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        updateShader(h);
     }
 
     @Override
@@ -99,19 +121,19 @@ public class SlotButtonView extends View {
             canvas.drawPath(miniPath, glyphPaint);
         }
 
-        // 3. Если задана текстовая метка ("C", "?", "1".."5") — рисуем текст по центру
+        // 3. Если задана текстовая метка ("C", "✕", "?", "1".."5") — рисуем текст по центру
         if (labelText != null && !labelText.isEmpty()) {
             Paint.FontMetrics fm = textPaint.getFontMetrics();
             float textY = cy - (fm.ascent + fm.descent) * 0.5f;
             canvas.drawText(labelText, cx, textY, textPaint);
         }
 
-        // 4. Обводка: оранжевая для активного слота, тонкая тёмная для остальных
+        // 4. Обводка: оранжевая для активного слота, иначе тонкая тёмная
         if (isSelected) {
             borderPaint.setColor(Color.parseColor("#FF7043"));
             borderPaint.setStrokeWidth(dpToPx(2.8f));
         } else {
-            borderPaint.setColor(Color.parseColor("#55000000"));
+            borderPaint.setColor(Color.parseColor("#66000000"));
             borderPaint.setStrokeWidth(dpToPx(1.5f));
         }
         canvas.drawCircle(cx, cy, radius, borderPaint);
