@@ -31,5 +31,5 @@ android {
 }
 
 dependencies {
-    // Чистый Android SDK
+    // Чистый Android SDK без стороннего рекламного мусора
 }
