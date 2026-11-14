@@ -24,11 +24,14 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Сборка Debug APK
+      - name: Сборка APK
         run: gradle assembleDebug --no-daemon
 
-      - name: Выгрузка готового APK в артефакты
+      - name: Переименование файла в GlyphLens.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk GlyphLens.apk
+
+      - name: Выгрузка готового GlyphLens.apk в артефакты
         uses: actions/upload-artifact@v4
         with:
-          name: GlyphLens-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: GlyphLens
+          path: GlyphLens.apk
