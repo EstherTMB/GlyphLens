@@ -27,7 +27,7 @@ public class GlyphCanvasView extends View {
     private boolean isCalibrationPreview = false;
     private boolean showGuide = true;
     private float gridScale = 1.0f;
-    private float gridSquash = 1.0f; // Коэффициент сплющивания по горизонтали
+    private float gridSquash = 1.0f; 
     private GlyphStroke currentDrawingStroke = null;
     private GlyphStroke displayedStroke = null;
     private OnStrokeRecordedListener listener;
@@ -63,7 +63,17 @@ public class GlyphCanvasView extends View {
         invalidate();
     }
 
-    public void setCalibrationPreview(boolean calibrationPreview) { this.isCalibrationPreview = calibrationPreview; invalidate(); }
+    public void setCalibrationPreview(boolean calibrationPreview) { 
+        this.isCalibrationPreview = calibrationPreview; 
+        if (calibrationPreview) {
+            // В режиме калибровки убираем заливку фона, чтобы видеть только точки поверх скриншота
+            bgPaint.setColor(Color.TRANSPARENT);
+        } else {
+            setBgAlphaPercent(AppPrefs.getBgAlphaPercent(getContext()));
+        }
+        invalidate(); 
+    }
+    
     public void setDisplayedStroke(GlyphStroke stroke) { this.displayedStroke = stroke; invalidate(); }
     public void setShowGuide(boolean show) { this.showGuide = show; invalidate(); }
     public void setLineColor(int color) { strokePaint.setColor(color); invalidate(); }
@@ -75,9 +85,11 @@ public class GlyphCanvasView extends View {
     }
 
     public void setBgAlphaPercent(int percent) {
-        int alpha = (int) (255 * (percent / 100f));
-        bgPaint.setColor(Color.argb(alpha, 24, 42, 68));
-        invalidate();
+        if (!isCalibrationPreview) {
+            int alpha = (int) (255 * (percent / 100f));
+            bgPaint.setColor(Color.argb(alpha, 24, 42, 68));
+            invalidate();
+        }
     }
 
     @Override
@@ -111,9 +123,7 @@ public class GlyphCanvasView extends View {
     private void drawElevenNodes(Canvas canvas, float w, float h, Paint paintToUse) {
         float cx = w * 0.5f;
         float cy = h * 0.5f;
-        // Базовый радиус зависит от масштаба (gridScale)
         float baseRadius = Math.min(w, h) * 0.46f * gridScale;
-        
         float nodeCircleRadius = dpToPx(7.5f);
 
         canvas.drawCircle(cx, cy, nodeCircleRadius, paintToUse);

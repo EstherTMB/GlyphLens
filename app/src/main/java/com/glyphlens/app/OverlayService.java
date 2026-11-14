@@ -29,7 +29,7 @@ public class OverlayService extends Service {
     private static final String CHANNEL_ID = "glyphlens_overlay_channel";
     private static final int NOTIFICATION_ID = 1001;
 
-    private enum State { COLLAPSED, PICKER, EXPANDED_RECORD, EXPANDED_REPLAY }
+    private enum State { COLLAPSED, PICKER, EXPANDED_RECORD, EXPANDED_REPLAY, CALIBRATION }
 
     private static boolean running = false;
     public static boolean isRunning() { return running; }
@@ -37,7 +37,6 @@ public class OverlayService extends Service {
     private WindowManager windowManager;
     private State currentState = State.COLLAPSED;
     private boolean isHiddenByNotification = false;
-    private boolean isPausedForCalibration = false;
 
     private LinearLayout bubbleContainer;
     private SlotButtonView mainBubbleBtn;
@@ -46,8 +45,6 @@ public class OverlayService extends Service {
 
     private LinearLayout topBarLayout;
     private final SlotButtonView[] slotButtons = new SlotButtonView[5];
-    private SlotButtonView clearButton;
-    private SlotButtonView closeButton;
     private WindowManager.LayoutParams topBarParams;
 
     private GlyphCanvasView glyphCanvasView;
@@ -74,8 +71,8 @@ public class OverlayService extends Service {
             String action = intent.getAction();
             if (ACTION_STOP.equals(action)) { stopSelf(); return START_NOT_STICKY; }
             else if (ACTION_TOGGLE_HIDE.equals(action)) { isHiddenByNotification = !isHiddenByNotification; updateVisibility(); updateNotification(); }
-            else if (ACTION_CALIBRATION_ENTER.equals(action)) { isPausedForCalibration = true; updateVisibility(); }
-            else if (ACTION_CALIBRATION_EXIT.equals(action)) { isPausedForCalibration = false; applyPreferences(); updateVisibility(); }
+            else if (ACTION_CALIBRATION_ENTER.equals(action)) { switchToState(State.CALIBRATION); }
+            else if (ACTION_CALIBRATION_EXIT.equals(action)) { switchToState(State.COLLAPSED); }
             else if (ACTION_REFRESH_PREFS.equals(action)) { applyPreferences(); }
         }
         return START_STICKY;
@@ -88,7 +85,6 @@ public class OverlayService extends Service {
         int btnSize = dpToPx(42);
         int btnMargin = dpToPx(4);
 
-        // А. ПУЗЫРЁК
         bubbleContainer = new LinearLayout(this);
         bubbleContainer.setOrientation(LinearLayout.HORIZONTAL);
         bubbleContainer.setGravity(Gravity.CENTER_VERTICAL);
@@ -114,10 +110,9 @@ public class OverlayService extends Service {
         bubbleParams.x = AppPrefs.getBubbleX(this, dpToPx(12));
         bubbleParams.y = AppPrefs.getBubbleY(this, dpToPx(220));
 
-        // Б. ХОЛСТ
         glyphCanvasView = new GlyphCanvasView(this);
         glyphCanvasView.setOnStrokeRecordedListener(this::handleStrokeRecorded);
-        // Задаем фиксированный размер холста на всю ширину экрана с отступами
+        
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int screenW = dm.widthPixels;
         int canvasSize = screenW - dpToPx(16);
@@ -125,7 +120,6 @@ public class OverlayService extends Service {
         canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
-        // В. ПАНЕЛЬ УПРАВЛЕНИЯ
         topBarLayout = new LinearLayout(this);
         topBarLayout.setOrientation(LinearLayout.HORIZONTAL);
         topBarLayout.setGravity(Gravity.CENTER_VERTICAL);
@@ -138,14 +132,14 @@ public class OverlayService extends Service {
             slotButtons[i] = slotBtn;
             topBarLayout.addView(slotBtn, lp);
         }
-        clearButton = new SlotButtonView(this);
+        SlotButtonView clearButton = new SlotButtonView(this);
         clearButton.setLabelText("C");
         LinearLayout.LayoutParams clearLp = new LinearLayout.LayoutParams(dpToPx(38), dpToPx(38));
         clearLp.rightMargin = dpToPx(5);
         clearButton.setOnClickListener(v -> onClearOnlyClicked());
         topBarLayout.addView(clearButton, clearLp);
 
-        closeButton = new SlotButtonView(this);
+        SlotButtonView closeButton = new SlotButtonView(this);
         closeButton.setLabelText("✕");
         closeButton.setCloseButtonStyle(true);
         LinearLayout.LayoutParams closeLp = new LinearLayout.LayoutParams(dpToPx(38), dpToPx(38));
@@ -256,6 +250,12 @@ public class OverlayService extends Service {
 
     private void switchToState(State newState) {
         this.currentState = newState;
+        
+        // Сброс флагов калибровки
+        if (newState != State.CALIBRATION) {
+            glyphCanvasView.setCalibrationPreview(false);
+        }
+
         switch (newState) {
             case COLLAPSED:
                 quickPickerRow.setVisibility(View.GONE);
@@ -276,19 +276,35 @@ public class OverlayService extends Service {
                 canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
+            case CALIBRATION:
+                glyphCanvasView.setRecordMode(false);
+                glyphCanvasView.setCalibrationPreview(true);
+                // Окно становится "прозрачным" для касаний, чтобы можно было дергать ползунки Activity под ним
+                canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                windowManager.updateViewLayout(glyphCanvasView, canvasParams);
+                break;
         }
         updateVisibility();
     }
 
     private void updateVisibility() {
-        if (isHiddenByNotification || isPausedForCalibration) {
+        if (isHiddenByNotification) {
             bubbleContainer.setVisibility(View.GONE); topBarLayout.setVisibility(View.GONE); glyphCanvasView.setVisibility(View.GONE);
             return;
         }
-        if (currentState == State.COLLAPSED || currentState == State.PICKER) {
-            bubbleContainer.setVisibility(View.VISIBLE); topBarLayout.setVisibility(View.GONE); glyphCanvasView.setVisibility(View.GONE);
+        
+        if (currentState == State.CALIBRATION) {
+            bubbleContainer.setVisibility(View.GONE); 
+            topBarLayout.setVisibility(View.GONE); 
+            glyphCanvasView.setVisibility(View.VISIBLE);
+        } else if (currentState == State.COLLAPSED || currentState == State.PICKER) {
+            bubbleContainer.setVisibility(View.VISIBLE); 
+            topBarLayout.setVisibility(View.GONE); 
+            glyphCanvasView.setVisibility(View.GONE);
         } else {
-            bubbleContainer.setVisibility(View.GONE); topBarLayout.setVisibility(View.VISIBLE); glyphCanvasView.setVisibility(View.VISIBLE);
+            bubbleContainer.setVisibility(View.GONE); 
+            topBarLayout.setVisibility(View.VISIBLE); 
+            glyphCanvasView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -304,7 +320,6 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        // Позиция холста настраивается ползунком Y, а размер фиксированный
         int canvasSize = screenW - dpToPx(16);
         int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
         int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
@@ -312,12 +327,10 @@ public class OverlayService extends Service {
         canvasParams.y = canvasTopY;
         windowManager.updateViewLayout(glyphCanvasView, canvasParams);
 
-        // Передаем масштаб и сплющивание внутрь холста
         float scale = AppPrefs.getGridScalePercent(this) / 100f;
         float squash = AppPrefs.getGridSquashPercent(this) / 100f;
         glyphCanvasView.setGridGeometry(scale, squash);
 
-        // Панель жестко привязана над холстом, чтобы не наползать
         topBarParams.x = dpToPx(12);
         topBarParams.y = Math.max(dpToPx(30), canvasTopY - dpToPx(55));
         windowManager.updateViewLayout(topBarLayout, topBarParams);
