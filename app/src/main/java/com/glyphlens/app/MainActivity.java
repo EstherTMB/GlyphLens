@@ -22,9 +22,6 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/**
- * Экран настроек и запуска сервиса GlyphLens.
- */
 public class MainActivity extends Activity {
 
     private Button toggleServiceBtn;
@@ -57,7 +54,6 @@ public class MainActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
         scrollView.addView(root);
 
-        // Заголовок
         TextView title = new TextView(this);
         title.setText("GLYPHLENS");
         title.setTextColor(Color.parseColor("#00E676"));
@@ -72,21 +68,12 @@ public class MainActivity extends Activity {
         subtitle.setPadding(0, dpToPx(4), 0, dpToPx(18));
         root.addView(subtitle);
 
-        // Главная кнопка ЗАПУСТИТЬ / ОСТАНОВИТЬ
         toggleServiceBtn = new Button(this);
         toggleServiceBtn.setTextSize(15f);
         toggleServiceBtn.setTextColor(Color.WHITE);
-        toggleServiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onToggleServiceClicked();
-            }
-        });
-        root.addView(toggleServiceBtn, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(54)
-        ));
+        toggleServiceBtn.setOnClickListener(v -> onToggleServiceClicked());
+        root.addView(toggleServiceBtn, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(54)));
 
-        // --- РАЗДЕЛ 1: РЕЖИМ ВЫБОРА КОЛИЧЕСТВА ГЛИФОВ ---
         addSectionHeader(root, "1. КОЛИЧЕСТВО ГЛИФОВ И ПОПЛАВОК");
 
         Switch askSwitch = new Switch(this);
@@ -103,13 +90,7 @@ public class MainActivity extends Activity {
         root.addView(fixedHint);
 
         maxGlyphsGroup = new RadioGroup(this);
-        String[] glyphLabels = {
-                "1 Глиф (Портал L1)",
-                "2 Глифа (Портал L2)",
-                "3 Глифа (Портал L3 – L5)",
-                "4 Глифа (Портал L6 – L7)",
-                "5 Глифов (Портал L8)"
-        };
+        String[] glyphLabels = { "1 Глиф (Портал L1)", "2 Глифа (Портал L2)", "3 Глифа (Портал L3 – L5)", "4 Глифа (Портал L6 – L7)", "5 Глифов (Портал L8)" };
         int currentMax = AppPrefs.getFixedMaxGlyphs(this);
         for (int i = 0; i < 5; i++) {
             final int count = i + 1;
@@ -118,44 +99,26 @@ public class MainActivity extends Activity {
             rb.setTextColor(Color.WHITE);
             rb.setId(100 + count);
             rb.setChecked(count == currentMax);
-            rb.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    AppPrefs.setFixedMaxGlyphs(MainActivity.this, count);
-                    notifyServicePrefsChanged();
-                }
-            });
+            rb.setOnClickListener(v -> { AppPrefs.setFixedMaxGlyphs(MainActivity.this, count); notifyServicePrefsChanged(); });
             maxGlyphsGroup.addView(rb);
         }
         root.addView(maxGlyphsGroup);
-
         updateFixedGroupEnabled(!AppPrefs.isAskBeforeHack(this));
-        askSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                AppPrefs.setAskBeforeHack(MainActivity.this, isChecked);
-                updateFixedGroupEnabled(!isChecked);
-                notifyServicePrefsChanged();
-            }
+        askSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            AppPrefs.setAskBeforeHack(MainActivity.this, isChecked);
+            updateFixedGroupEnabled(!isChecked);
+            notifyServicePrefsChanged();
         });
 
-        // --- РАЗДЕЛ 2: ВНЕШНИЙ ВИД ХОЛСТА ---
         addSectionHeader(root, "2. ВНЕШНИЙ ВИД И ЦВЕТ ЛИНИИ");
 
         Switch guideSwitch = new Switch(this);
         guideSwitch.setText("Показывать сетку из 11 точек (Show glyph guide)");
         guideSwitch.setTextColor(Color.WHITE);
         guideSwitch.setChecked(AppPrefs.isShowGuide(this));
-        guideSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                AppPrefs.setShowGuide(MainActivity.this, isChecked);
-                notifyServicePrefsChanged();
-            }
-        });
+        guideSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> { AppPrefs.setShowGuide(MainActivity.this, isChecked); notifyServicePrefsChanged(); });
         root.addView(guideSwitch);
 
-        // Выбор цвета линии
         TextView colorLabel = new TextView(this);
         colorLabel.setText("Цвет линии глифа:");
         colorLabel.setTextColor(Color.WHITE);
@@ -164,37 +127,19 @@ public class MainActivity extends Activity {
 
         LinearLayout colorRow = new LinearLayout(this);
         colorRow.setOrientation(LinearLayout.HORIZONTAL);
-        final int[] presetColors = {
-                Color.parseColor("#00E676"), // Зелёный Enlightened
-                Color.parseColor("#00B0FF"), // Синий Resistance
-                Color.parseColor("#00E5FF"), // Яркий Циан
-                Color.parseColor("#FFD600"), // Золотой
-                Color.parseColor("#FF4081"), // Неоново-розовый
-                Color.parseColor("#FFFFFF")  // Белый
-        };
+        final int[] presetColors = { Color.parseColor("#00E676"), Color.parseColor("#00B0FF"), Color.parseColor("#00E5FF"), Color.parseColor("#FFD600"), Color.parseColor("#FF4081"), Color.parseColor("#FFFFFF") };
         for (final int c : presetColors) {
             View colorSwatch = new View(this);
             GradientDrawable gd = new GradientDrawable();
-            gd.setShape(GradientDrawable.OVAL);
-            gd.setColor(c);
-            gd.setStroke(dpToPx(2), Color.WHITE);
+            gd.setShape(GradientDrawable.OVAL); gd.setColor(c); gd.setStroke(dpToPx(2), Color.WHITE);
             colorSwatch.setBackground(gd);
-
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dpToPx(40), dpToPx(40));
             lp.rightMargin = dpToPx(12);
-            colorSwatch.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    AppPrefs.setLineColor(MainActivity.this, c);
-                    notifyServicePrefsChanged();
-                    Toast.makeText(MainActivity.this, "Цвет линии обновлён", Toast.LENGTH_SHORT).show();
-                }
-            });
+            colorSwatch.setOnClickListener(v -> { AppPrefs.setLineColor(MainActivity.this, c); notifyServicePrefsChanged(); Toast.makeText(MainActivity.this, "Цвет линии обновлён", Toast.LENGTH_SHORT).show(); });
             colorRow.addView(colorSwatch, lp);
         }
         root.addView(colorRow);
 
-        // Прозрачность фона
         final TextView alphaLabel = new TextView(this);
         int currAlpha = AppPrefs.getBgAlphaPercent(this);
         alphaLabel.setText("Непрозрачность фона линзы: " + currAlpha + "%");
@@ -206,19 +151,13 @@ public class MainActivity extends Activity {
         alphaSeek.setMax(60); // 15% .. 75%
         alphaSeek.setProgress(currAlpha - 15);
         alphaSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = 15 + progress;
-                alphaLabel.setText("Непрозрачность фона линзы: " + val + "%");
-                AppPrefs.setBgAlphaPercent(MainActivity.this, val);
-                notifyServicePrefsChanged();
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int val = 15 + progress; alphaLabel.setText("Непрозрачность фона линзы: " + val + "%"); AppPrefs.setBgAlphaPercent(MainActivity.this, val); notifyServicePrefsChanged();
             }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         root.addView(alphaSeek);
 
-        // --- РАЗДЕЛ 3: КАЛИБРОВКА ПОД ЭКРАН ---
         addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS");
 
         TextView calibHint = new TextView(this);
@@ -233,39 +172,26 @@ public class MainActivity extends Activity {
         openCalibBtn.setTextSize(14f);
         openCalibBtn.setTextColor(Color.WHITE);
         openCalibBtn.setBackgroundColor(Color.parseColor("#0277BD"));
-        openCalibBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, CalibrationActivity.class);
-                startActivity(intent);
-            }
-        });
-        LinearLayout.LayoutParams calibBtnLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(46)
-        );
+        openCalibBtn.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CalibrationActivity.class)));
+        LinearLayout.LayoutParams calibBtnLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(46));
         calibBtnLp.bottomMargin = dpToPx(10);
         root.addView(openCalibBtn, calibBtnLp);
 
         scaleLabel = new TextView(this);
-        int currScale = AppPrefs.getCanvasScalePercent(this);
-        scaleLabel.setText("Размер квадрата поля: " + currScale + "% от ширины экрана");
+        int currScale = AppPrefs.getGridScalePercent(this);
+        scaleLabel.setText("Размер сетки точек: " + currScale + "%");
         scaleLabel.setTextColor(Color.WHITE);
         scaleLabel.setPadding(0, dpToPx(6), 0, dpToPx(4));
         root.addView(scaleLabel);
 
         scaleSeek = new SeekBar(this);
-        scaleSeek.setMax(40); // 65% .. 105%
-        scaleSeek.setProgress(currScale - 65);
+        scaleSeek.setMax(70); // 50% .. 120%
+        scaleSeek.setProgress(currScale - 50);
         scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = 65 + progress;
-                scaleLabel.setText("Размер квадрата поля: " + val + "% от ширины экрана");
-                AppPrefs.setCanvasScalePercent(MainActivity.this, val);
-                notifyServicePrefsChanged();
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int val = 50 + progress; scaleLabel.setText("Размер сетки точек: " + val + "%"); AppPrefs.setGridScalePercent(MainActivity.this, val); notifyServicePrefsChanged();
             }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         root.addView(scaleSeek);
 
@@ -280,21 +206,15 @@ public class MainActivity extends Activity {
         offsetSeek.setMax(300); // -150 .. +150 dp
         offsetSeek.setProgress(currOffset + 150);
         offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = progress - 150;
-                offsetLabel.setText("Сдвиг поля по вертикали: " + val + " dp");
-                AppPrefs.setCanvasOffsetYDp(MainActivity.this, val);
-                notifyServicePrefsChanged();
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int val = progress - 150; offsetLabel.setText("Сдвиг поля по вертикали: " + val + " dp"); AppPrefs.setCanvasOffsetYDp(MainActivity.this, val); notifyServicePrefsChanged();
             }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         root.addView(offsetSeek);
 
-        // --- АВТОРСТВО И КОПИРАЙТ В САМОМ КОНЦЕ ---
         TextView creditsView = new TextView(this);
-        creditsView.setText("GlyphLens v1.1 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setText("GlyphLens v1.2 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
         creditsView.setTextColor(Color.parseColor("#607D8B"));
         creditsView.setTextSize(11.5f);
         creditsView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -307,9 +227,9 @@ public class MainActivity extends Activity {
 
     private void refreshCalibrationSlidersFromPrefs() {
         if (scaleSeek != null && scaleLabel != null) {
-            int currScale = AppPrefs.getCanvasScalePercent(this);
-            scaleSeek.setProgress(currScale - 65);
-            scaleLabel.setText("Размер квадрата поля: " + currScale + "% от ширины экрана");
+            int currScale = AppPrefs.getGridScalePercent(this);
+            scaleSeek.setProgress(currScale - 50);
+            scaleLabel.setText("Размер сетки точек: " + currScale + "%");
         }
         if (offsetSeek != null && offsetLabel != null) {
             int currOffset = AppPrefs.getCanvasOffsetYDp(this);
@@ -320,19 +240,13 @@ public class MainActivity extends Activity {
 
     private void addSectionHeader(LinearLayout parent, String text) {
         TextView tv = new TextView(this);
-        tv.setText(text);
-        tv.setTextColor(Color.parseColor("#4FC3F7"));
-        tv.setTextSize(14f);
-        tv.setTypeface(null, android.graphics.Typeface.BOLD);
-        tv.setPadding(0, dpToPx(22), 0, dpToPx(8));
+        tv.setText(text); tv.setTextColor(Color.parseColor("#4FC3F7")); tv.setTextSize(14f); tv.setTypeface(null, android.graphics.Typeface.BOLD); tv.setPadding(0, dpToPx(22), 0, dpToPx(8));
         parent.addView(tv);
     }
 
     private void updateFixedGroupEnabled(boolean enabled) {
         for (int i = 0; i < maxGlyphsGroup.getChildCount(); i++) {
-            View child = maxGlyphsGroup.getChildAt(i);
-            child.setEnabled(enabled);
-            child.setAlpha(enabled ? 1.0f : 0.4f);
+            View child = maxGlyphsGroup.getChildAt(i); child.setEnabled(enabled); child.setAlpha(enabled ? 1.0f : 0.4f);
         }
     }
 
@@ -341,49 +255,29 @@ public class MainActivity extends Activity {
             Intent stopIntent = new Intent(this, OverlayService.class);
             stopIntent.setAction(OverlayService.ACTION_STOP);
             startService(stopIntent);
-            toggleServiceBtn.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    updateServiceButtonState();
-                }
-            }, 150);
+            toggleServiceBtn.postDelayed(this::updateServiceButtonState, 150);
             return;
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "Выдайте разрешение «Поверх других окон» для GlyphLens", Toast.LENGTH_LONG).show();
-            Intent intent = new Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName())
-            );
-            startActivity(intent);
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
             return;
         }
 
         Intent startIntent = new Intent(this, OverlayService.class);
         startIntent.setAction(OverlayService.ACTION_START);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(startIntent);
-        } else {
-            startService(startIntent);
-        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(startIntent); else startService(startIntent);
 
-        toggleServiceBtn.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                updateServiceButtonState();
-            }
-        }, 150);
+        toggleServiceBtn.postDelayed(this::updateServiceButtonState, 150);
     }
 
     private void updateServiceButtonState() {
         boolean running = OverlayService.isRunning();
         if (running) {
-            toggleServiceBtn.setText("TERMINATE (ОСТАНОВИТЬ GLYPHLENS)");
-            toggleServiceBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
+            toggleServiceBtn.setText("TERMINATE (ОСТАНОВИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
         } else {
-            toggleServiceBtn.setText("START OVERLAY (ЗАПУСТИТЬ GLYPHLENS)");
-            toggleServiceBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
+            toggleServiceBtn.setText("START OVERLAY (ЗАПУСТИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
         }
     }
 
@@ -395,9 +289,5 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int dpToPx(int dp) {
-        return (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics()
-        );
-    }
+    private int dpToPx(int dp) { return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics()); }
 }

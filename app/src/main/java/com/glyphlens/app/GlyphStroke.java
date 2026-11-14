@@ -5,29 +5,13 @@ import android.graphics.PointF;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Хранит один нарисованный глиф в виде нормализованных координат (от 0.0 до 1.0).
- * Содержит вычисление длины росчерка для фильтрации случайных касаний пальцем.
- */
 public class GlyphStroke {
     private final List<PointF> points = new ArrayList<>();
 
-    public void addPoint(float normX, float normY) {
-        points.add(new PointF(normX, normY));
-    }
+    public void addPoint(float normX, float normY) { points.add(new PointF(normX, normY)); }
+    public boolean isEmpty() { return points.size() < 2; }
+    public void clear() { points.clear(); }
 
-    public boolean isEmpty() {
-        return points.size() < 2;
-    }
-
-    public void clear() {
-        points.clear();
-    }
-
-    /**
-     * Вычисляет реальную длину проведённой линии в пикселях на холсте (width x height).
-     * Используется для отсеивания случайных одиночных тычков («защита от кривых рук»).
-     */
     public float getTotalLengthPx(float width, float height) {
         if (points.size() < 2) return 0f;
         float total = 0f;
@@ -42,23 +26,15 @@ public class GlyphStroke {
         return total;
     }
 
-    /**
-     * Генерирует сглаженный векторный Path под любой размер окна (width x height)
-     * с учётом внутреннего отступа paddingPx.
-     */
     public Path toPath(float width, float height, float paddingPx) {
         Path path = new Path();
-        if (points.isEmpty()) {
-            return path;
-        }
+        if (points.isEmpty()) return path;
         float drawW = width - paddingPx * 2f;
         float drawH = height - paddingPx * 2f;
-
         PointF first = points.get(0);
         float prevX = paddingPx + first.x * drawW;
         float prevY = paddingPx + first.y * drawH;
         path.moveTo(prevX, prevY);
-
         for (int i = 1; i < points.size(); i++) {
             PointF pt = points.get(i);
             float currX = paddingPx + pt.x * drawW;

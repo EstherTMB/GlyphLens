@@ -21,11 +21,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import java.io.InputStream;
 
-/**
- * Полноэкранный режим точной подгонки сетки из 11 точек поверх скриншота из Ingress.
- * Использует системный фотопикер (ACTION_GET_CONTENT), поэтому НЕ требует никаких
- * разрешений на доступ к памяти телефона!
- */
 public class CalibrationActivity extends Activity {
 
     private static final int REQ_PICK_SCREENSHOT = 2001;
@@ -43,25 +38,20 @@ public class CalibrationActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
 
-        // 1. Фоновый ImageView со скриншотом из игры
         screenshotView = new ImageView(this);
         screenshotView.setScaleType(ImageView.ScaleType.FIT_XY);
-        root.addView(screenshotView, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-        ));
+        root.addView(screenshotView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // 2. Само поле GlyphCanvasView с 11 точками
         previewCanvas = new GlyphCanvasView(this);
         previewCanvas.setCalibrationPreview(true);
         previewCanvas.setBgAlphaPercent(AppPrefs.getBgAlphaPercent(this));
         previewCanvas.setLineColor(AppPrefs.getLineColor(this));
+        previewCanvas.setGridScale(AppPrefs.getGridScalePercent(this) / 100f);
 
         canvasLp = new FrameLayout.LayoutParams(dpToPx(300), dpToPx(300));
         canvasLp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         root.addView(previewCanvas, canvasLp);
 
-        // 3. Полупрозрачная панель управления внизу экрана
         LinearLayout controlPanel = new LinearLayout(this);
         controlPanel.setOrientation(LinearLayout.VERTICAL);
         int pad = dpToPx(14);
@@ -74,30 +64,29 @@ public class CalibrationActivity extends Activity {
         controlPanel.setBackground(panelBg);
 
         TextView panelTitle = new TextView(this);
-        panelTitle.setText("Совместите 11 зелёных колец со скриншотом Glyph Hack");
+        panelTitle.setText("Совместите зелёные кольца со скриншотом");
         panelTitle.setTextColor(Color.parseColor("#4FC3F7"));
         panelTitle.setTextSize(13f);
         panelTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         controlPanel.addView(panelTitle);
 
-        // Ползунок масштаба
-        int currScale = AppPrefs.getCanvasScalePercent(this);
+        int currScale = AppPrefs.getGridScalePercent(this);
         scaleValueText = new TextView(this);
-        scaleValueText.setText("Размер квадрата поля: " + currScale + "%");
+        scaleValueText.setText("Размер сетки точек: " + currScale + "%");
         scaleValueText.setTextColor(Color.WHITE);
         scaleValueText.setTextSize(13f);
         scaleValueText.setPadding(0, dpToPx(8), 0, dpToPx(2));
         controlPanel.addView(scaleValueText);
 
         SeekBar scaleSeek = new SeekBar(this);
-        scaleSeek.setMax(40); // 65% .. 105%
-        scaleSeek.setProgress(currScale - 65);
+        scaleSeek.setMax(70); // 50% .. 120%
+        scaleSeek.setProgress(currScale - 50);
         scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = 65 + progress;
-                scaleValueText.setText("Размер квадрата поля: " + val + "%");
-                AppPrefs.setCanvasScalePercent(CalibrationActivity.this, val);
+                int val = 50 + progress;
+                scaleValueText.setText("Размер сетки точек: " + val + "%");
+                AppPrefs.setGridScalePercent(CalibrationActivity.this, val);
                 updatePreviewGeometry();
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
@@ -105,7 +94,6 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(scaleSeek);
 
-        // Ползунок вертикального сдвига
         int currOffset = AppPrefs.getCanvasOffsetYDp(this);
         offsetValueText = new TextView(this);
         offsetValueText.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
@@ -130,25 +118,17 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(offsetSeek);
 
-        // Ряд кнопок: [Выбрать скриншот] и [Готово]
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
         btnRow.setPadding(0, dpToPx(10), 0, 0);
 
         Button pickBtn = new Button(this);
-        pickBtn.setText("Выбрать скриншот");
+        pickBtn.setText("Скриншот");
         pickBtn.setTextSize(13f);
         pickBtn.setTextColor(Color.WHITE);
         pickBtn.setBackgroundColor(Color.parseColor("#37474F"));
-        pickBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                launchScreenshotPicker();
-            }
-        });
-        LinearLayout.LayoutParams pickLp = new LinearLayout.LayoutParams(
-                0, dpToPx(42), 1f
-        );
+        pickBtn.setOnClickListener(v -> launchScreenshotPicker());
+        LinearLayout.LayoutParams pickLp = new LinearLayout.LayoutParams(0, dpToPx(42), 1f);
         pickLp.rightMargin = dpToPx(8);
         btnRow.addView(pickBtn, pickLp);
 
@@ -157,23 +137,13 @@ public class CalibrationActivity extends Activity {
         doneBtn.setTextSize(13f);
         doneBtn.setTextColor(Color.WHITE);
         doneBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
-        doneBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-        LinearLayout.LayoutParams doneLp = new LinearLayout.LayoutParams(
-                0, dpToPx(42), 1f
-        );
+        doneBtn.setOnClickListener(v -> finish());
+        LinearLayout.LayoutParams doneLp = new LinearLayout.LayoutParams(0, dpToPx(42), 1f);
         btnRow.addView(doneBtn, doneLp);
 
         controlPanel.addView(btnRow);
 
-        FrameLayout.LayoutParams panelLp = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT
-        );
+        FrameLayout.LayoutParams panelLp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
         panelLp.gravity = Gravity.BOTTOM;
         int margin = dpToPx(12);
         panelLp.setMargins(margin, margin, margin, margin);
@@ -181,8 +151,6 @@ public class CalibrationActivity extends Activity {
 
         setContentView(root);
         updatePreviewGeometry();
-
-        // Сразу открываем выбор скриншота при входе
         launchScreenshotPicker();
     }
 
@@ -211,7 +179,7 @@ public class CalibrationActivity extends Activity {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("image/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(Intent.createChooser(intent, "Выберите скриншот Glyph Hack"), REQ_PICK_SCREENSHOT);
+            startActivityForResult(Intent.createChooser(intent, "Выберите скриншот"), REQ_PICK_SCREENSHOT);
         } catch (Exception e) {
             Toast.makeText(this, "Не удалось открыть галерею", Toast.LENGTH_SHORT).show();
         }
@@ -240,8 +208,8 @@ public class CalibrationActivity extends Activity {
         int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        int scalePercent = AppPrefs.getCanvasScalePercent(this);
-        int canvasSize = (int) (Math.min(screenW, screenH) * (scalePercent / 100f));
+        // Фиксированный размер окна линзы
+        int canvasSize = screenW - dpToPx(24);
         int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
         int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
 
@@ -249,12 +217,12 @@ public class CalibrationActivity extends Activity {
         canvasLp.height = canvasSize;
         canvasLp.topMargin = canvasTopY;
         previewCanvas.setLayoutParams(canvasLp);
+        
+        previewCanvas.setGridScale(AppPrefs.getGridScalePercent(this) / 100f);
         previewCanvas.invalidate();
     }
 
     private int dpToPx(int dp) {
-        return (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics()
-        );
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 }
