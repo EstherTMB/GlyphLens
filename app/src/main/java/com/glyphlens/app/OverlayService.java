@@ -71,8 +71,8 @@ public class OverlayService extends Service {
             String action = intent.getAction();
             if (ACTION_STOP.equals(action)) { stopSelf(); return START_NOT_STICKY; }
             else if (ACTION_TOGGLE_HIDE.equals(action)) { isHiddenByNotification = !isHiddenByNotification; updateVisibility(); updateNotification(); }
-            else if (ACTION_CALIBRATION_ENTER.equals(action)) { switchToState(State.CALIBRATION); }
-            else if (ACTION_CALIBRATION_EXIT.equals(action)) { switchToState(State.COLLAPSED); }
+            else if (ACTION_CALIBRATION_ENTER.equals(action)) { switchToState(State.CALIBRATION); applyPreferences(); }
+            else if (ACTION_CALIBRATION_EXIT.equals(action)) { switchToState(State.COLLAPSED); applyPreferences(); }
             else if (ACTION_REFRESH_PREFS.equals(action)) { applyPreferences(); }
         }
         return START_STICKY;
@@ -117,6 +117,7 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int canvasSize = screenW - dpToPx(16);
         
+        // ВАЖНО: Привязка холста строго к Gravity.TOP, чтобы не зависеть от скрытой панели навигации!
         canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
@@ -251,7 +252,6 @@ public class OverlayService extends Service {
     private void switchToState(State newState) {
         this.currentState = newState;
         
-        // Сброс флагов калибровки
         if (newState != State.CALIBRATION) {
             glyphCanvasView.setCalibrationPreview(false);
         }
@@ -279,7 +279,6 @@ public class OverlayService extends Service {
             case CALIBRATION:
                 glyphCanvasView.setRecordMode(false);
                 glyphCanvasView.setCalibrationPreview(true);
-                // Окно становится "прозрачным" для касаний, чтобы можно было дергать ползунки Activity под ним
                 canvasParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
@@ -295,7 +294,7 @@ public class OverlayService extends Service {
         
         if (currentState == State.CALIBRATION) {
             bubbleContainer.setVisibility(View.GONE); 
-            topBarLayout.setVisibility(View.GONE); 
+            topBarLayout.setVisibility(View.VISIBLE); // Оставили видимой, чтобы видеть, где она будет
             glyphCanvasView.setVisibility(View.VISIBLE);
         } else if (currentState == State.COLLAPSED || currentState == State.PICKER) {
             bubbleContainer.setVisibility(View.VISIBLE); 
@@ -320,11 +319,19 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        int canvasSize = screenW - dpToPx(16);
-        int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
-        int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
+        // --- ГЛАВНОЕ ИЗМЕНЕНИЕ ---
+        // Если координата Y еще не была сохранена, вычисляем ее один раз по центру.
+        int absoluteY = AppPrefs.getCanvasAbsoluteY(this);
+        if (absoluteY == -1) {
+            int canvasSize = screenW - dpToPx(16);
+            absoluteY = (screenH - canvasSize) / 2;
+            AppPrefs.setCanvasAbsoluteY(this, absoluteY);
+        }
+        
+        // Теперь мы просто берем эту абсолютную базу и прибавляем к ней ползунок смещения
+        int finalY = absoluteY + dpToPx(AppPrefs.getCanvasOffsetYDp(this));
 
-        canvasParams.y = canvasTopY;
+        canvasParams.y = finalY;
         windowManager.updateViewLayout(glyphCanvasView, canvasParams);
 
         float scale = AppPrefs.getGridScalePercent(this) / 100f;
@@ -332,7 +339,7 @@ public class OverlayService extends Service {
         glyphCanvasView.setGridGeometry(scale, squash);
 
         topBarParams.x = dpToPx(12);
-        topBarParams.y = Math.max(dpToPx(30), canvasTopY - dpToPx(55));
+        topBarParams.y = Math.max(dpToPx(30), finalY - dpToPx(55));
         windowManager.updateViewLayout(topBarLayout, topBarParams);
     }
 

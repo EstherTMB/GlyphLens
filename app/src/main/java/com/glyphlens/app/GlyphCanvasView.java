@@ -66,7 +66,6 @@ public class GlyphCanvasView extends View {
     public void setCalibrationPreview(boolean calibrationPreview) { 
         this.isCalibrationPreview = calibrationPreview; 
         if (calibrationPreview) {
-            // В режиме калибровки убираем заливку фона, чтобы видеть только точки поверх скриншота
             bgPaint.setColor(Color.TRANSPARENT);
         } else {
             setBgAlphaPercent(AppPrefs.getBgAlphaPercent(getContext()));

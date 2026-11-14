@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
         addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS");
 
         TextView calibHint = new TextView(this);
-        calibHint.setText("Для точной подгонки нажмите кнопку ниже, загрузите скриншот открытого окна Glyph Hack и совместите зелёные кольца линзы с кольцами игры.");
+        calibHint.setText("Запустите GlyphLens кнопкой выше, затем откройте калибровку. Загрузите скриншот окна Glyph Hack и совместите кольца.");
         calibHint.setTextColor(Color.parseColor("#B0BEC5"));
         calibHint.setTextSize(13f);
         calibHint.setPadding(0, dpToPx(2), 0, dpToPx(10));
@@ -167,13 +167,19 @@ public class MainActivity extends Activity {
         openCalibBtn.setTextSize(14f);
         openCalibBtn.setTextColor(Color.WHITE);
         openCalibBtn.setBackgroundColor(Color.parseColor("#0277BD"));
-        openCalibBtn.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, CalibrationActivity.class)));
+        openCalibBtn.setOnClickListener(v -> {
+            if (!OverlayService.isRunning()) {
+                Toast.makeText(this, "Сначала нажмите START OVERLAY!", Toast.LENGTH_LONG).show();
+            } else {
+                startActivity(new Intent(MainActivity.this, CalibrationActivity.class));
+            }
+        });
         LinearLayout.LayoutParams calibBtnLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(46));
         calibBtnLp.bottomMargin = dpToPx(10);
         root.addView(openCalibBtn, calibBtnLp);
 
         TextView creditsView = new TextView(this);
-        creditsView.setText("GlyphLens v1.5 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setText("GlyphLens v1.6 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
         creditsView.setTextColor(Color.parseColor("#607D8B"));
         creditsView.setTextSize(11.5f);
         creditsView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -224,14 +230,6 @@ public class MainActivity extends Activity {
             toggleServiceBtn.setText("TERMINATE (ОСТАНОВИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#D32F2F"));
         } else {
             toggleServiceBtn.setText("START OVERLAY (ЗАПУСТИТЬ GLYPHLENS)"); toggleServiceBtn.setBackgroundColor(Color.parseColor("#2E7D32"));
-        }
-    }
-
-    private void notifyServicePrefsChanged() {
-        if (OverlayService.isRunning()) {
-            Intent intent = new Intent(this, OverlayService.class);
-            intent.setAction(OverlayService.ACTION_REFRESH_PREFS);
-            startService(intent);
         }
     }
 

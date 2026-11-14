@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -40,6 +39,9 @@ public class CalibrationActivity extends Activity {
         screenshotView = new ImageView(this);
         screenshotView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         root.addView(screenshotView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // В этом активити мы БОЛЬШЕ НЕ РИСУЕМ сетку!
+        // Она будет рисоваться самим OverlayService прямо поверх этого экрана.
 
         LinearLayout controlPanel = new LinearLayout(this);
         controlPanel.setOrientation(LinearLayout.VERTICAL);
@@ -167,7 +169,6 @@ public class CalibrationActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            // Иммерсивный режим: прячем строку состояния и навигации, чтобы скриншот лег пиксель в пиксель
             getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -181,11 +182,15 @@ public class CalibrationActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (OverlayService.isRunning()) {
-            Intent intent = new Intent(this, OverlayService.class);
-            intent.setAction(OverlayService.ACTION_CALIBRATION_ENTER);
-            startService(intent);
+        if (!OverlayService.isRunning()) {
+            Toast.makeText(this, "Сначала запустите оверлей GlyphLens!", Toast.LENGTH_LONG).show();
+            finish();
+            return;
         }
+        
+        Intent intent = new Intent(this, OverlayService.class);
+        intent.setAction(OverlayService.ACTION_CALIBRATION_ENTER);
+        startService(intent);
     }
 
     @Override
