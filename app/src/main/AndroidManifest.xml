@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.glyphlens.app">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Разрешение на отображение плавающего окна поверх игры -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-
-    <!-- Разрешения для фонового сервиса и шторки уведомлений на новых Android -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -26,7 +22,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Полноэкранный экран калибровки по скриншоту из игры -->
         <activity
             android:name=".CalibrationActivity"
             android:exported="false"
@@ -44,5 +39,4 @@
         </service>
 
     </application>
-
 </manifest>
