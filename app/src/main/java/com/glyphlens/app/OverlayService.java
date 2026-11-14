@@ -117,7 +117,12 @@ public class OverlayService extends Service {
         // Б. ХОЛСТ
         glyphCanvasView = new GlyphCanvasView(this);
         glyphCanvasView.setOnStrokeRecordedListener(this::handleStrokeRecorded);
-        canvasParams = new WindowManager.LayoutParams(dpToPx(320), dpToPx(320), overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
+        // Задаем фиксированный размер холста на всю ширину экрана с отступами
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int screenW = dm.widthPixels;
+        int canvasSize = screenW - dpToPx(16);
+        
+        canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         canvasParams.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
 
         // В. ПАНЕЛЬ УПРАВЛЕНИЯ
@@ -299,20 +304,20 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        // Фиксируем размер самого окна (синего фона) почти на всю ширину экрана
-        int canvasSize = screenW - dpToPx(24);
+        // Позиция холста настраивается ползунком Y, а размер фиксированный
+        int canvasSize = screenW - dpToPx(16);
         int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
         int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
 
-        canvasParams.width = canvasSize;
-        canvasParams.height = canvasSize;
         canvasParams.y = canvasTopY;
         windowManager.updateViewLayout(glyphCanvasView, canvasParams);
 
-        // Масштаб сетки точек теперь передается внутрь Canvas, не меняя размер самого окна!
-        glyphCanvasView.setGridScale(AppPrefs.getGridScalePercent(this) / 100f);
+        // Передаем масштаб и сплющивание внутрь холста
+        float scale = AppPrefs.getGridScalePercent(this) / 100f;
+        float squash = AppPrefs.getGridSquashPercent(this) / 100f;
+        glyphCanvasView.setGridGeometry(scale, squash);
 
-        // Панель жестко привязана к верхнему краю экрана/хоста, чтобы не сползать на текст
+        // Панель жестко привязана над холстом, чтобы не наползать
         topBarParams.x = dpToPx(12);
         topBarParams.y = Math.max(dpToPx(30), canvasTopY - dpToPx(55));
         windowManager.updateViewLayout(topBarLayout, topBarParams);

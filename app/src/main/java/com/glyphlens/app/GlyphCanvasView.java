@@ -26,7 +26,8 @@ public class GlyphCanvasView extends View {
     private boolean isRecordMode = true;
     private boolean isCalibrationPreview = false;
     private boolean showGuide = true;
-    private float gridScale = 1.0f; // Масштаб только для внутренних точек
+    private float gridScale = 1.0f;
+    private float gridSquash = 1.0f; // Коэффициент сплющивания по горизонтали
     private GlyphStroke currentDrawingStroke = null;
     private GlyphStroke displayedStroke = null;
     private OnStrokeRecordedListener listener;
@@ -66,7 +67,12 @@ public class GlyphCanvasView extends View {
     public void setDisplayedStroke(GlyphStroke stroke) { this.displayedStroke = stroke; invalidate(); }
     public void setShowGuide(boolean show) { this.showGuide = show; invalidate(); }
     public void setLineColor(int color) { strokePaint.setColor(color); invalidate(); }
-    public void setGridScale(float scale) { this.gridScale = scale; invalidate(); }
+    
+    public void setGridGeometry(float scale, float squash) { 
+        this.gridScale = scale; 
+        this.gridSquash = squash;
+        invalidate(); 
+    }
 
     public void setBgAlphaPercent(int percent) {
         int alpha = (int) (255 * (percent / 100f));
@@ -105,31 +111,25 @@ public class GlyphCanvasView extends View {
     private void drawElevenNodes(Canvas canvas, float w, float h, Paint paintToUse) {
         float cx = w * 0.5f;
         float cy = h * 0.5f;
-        // Базовый радиус зависит от масштаба (gridScale), задаваемого ползунком
-        float baseRadius = Math.min(w, h) * 0.45f * gridScale;
-        
-        // Коэффициент "сплющивания" по горизонтали, т.к. гексагон в Ingress не идеальный
-        float squashX = 0.86f; 
+        // Базовый радиус зависит от масштаба (gridScale)
+        float baseRadius = Math.min(w, h) * 0.46f * gridScale;
         
         float nodeCircleRadius = dpToPx(7.5f);
 
-        // Центральная точка (1)
         canvas.drawCircle(cx, cy, nodeCircleRadius, paintToUse);
 
-        // 6 внешних точек (2..7)
         int[] outerAnglesDeg = {-90, -30, 30, 90, 150, -150};
         for (int angleDeg : outerAnglesDeg) {
             double rad = Math.toRadians(angleDeg);
-            float nx = cx + (float) (baseRadius * Math.cos(rad) * squashX);
+            float nx = cx + (float) (baseRadius * Math.cos(rad) * gridSquash);
             float ny = cy + (float) (baseRadius * Math.sin(rad));
             canvas.drawCircle(nx, ny, nodeCircleRadius, paintToUse);
         }
 
-        // 4 внутренние точки (половина радиуса)
         int[] innerAnglesDeg = {-30, 30, 150, -150};
         for (int angleDeg : innerAnglesDeg) {
             double rad = Math.toRadians(angleDeg);
-            float nx = cx + (float) (baseRadius * 0.5f * Math.cos(rad) * squashX);
+            float nx = cx + (float) (baseRadius * 0.5f * Math.cos(rad) * gridSquash);
             float ny = cy + (float) (baseRadius * 0.5f * Math.sin(rad));
             canvas.drawCircle(nx, ny, nodeCircleRadius, paintToUse);
         }

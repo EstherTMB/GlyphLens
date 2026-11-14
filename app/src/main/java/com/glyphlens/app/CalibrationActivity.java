@@ -29,6 +29,7 @@ public class CalibrationActivity extends Activity {
     private GlyphCanvasView previewCanvas;
     private FrameLayout.LayoutParams canvasLp;
     private TextView scaleValueText;
+    private TextView squashValueText;
     private TextView offsetValueText;
 
     @Override
@@ -38,17 +39,21 @@ public class CalibrationActivity extends Activity {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
 
+        // FIT_CENTER предотвращает сплющивание скриншота, если экран с навигационной панелью не совпадает по высоте
         screenshotView = new ImageView(this);
-        screenshotView.setScaleType(ImageView.ScaleType.FIT_XY);
+        screenshotView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         root.addView(screenshotView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
         previewCanvas = new GlyphCanvasView(this);
         previewCanvas.setCalibrationPreview(true);
         previewCanvas.setBgAlphaPercent(AppPrefs.getBgAlphaPercent(this));
         previewCanvas.setLineColor(AppPrefs.getLineColor(this));
-        previewCanvas.setGridScale(AppPrefs.getGridScalePercent(this) / 100f);
+        
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int screenW = dm.widthPixels;
+        int canvasSize = screenW - dpToPx(16);
 
-        canvasLp = new FrameLayout.LayoutParams(dpToPx(300), dpToPx(300));
+        canvasLp = new FrameLayout.LayoutParams(canvasSize, canvasSize);
         canvasLp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         root.addView(previewCanvas, canvasLp);
 
@@ -58,18 +63,19 @@ public class CalibrationActivity extends Activity {
         controlPanel.setPadding(pad, pad, pad, pad);
 
         GradientDrawable panelBg = new GradientDrawable();
-        panelBg.setColor(Color.parseColor("#DD10141D"));
+        panelBg.setColor(Color.parseColor("#EE10141D"));
         panelBg.setCornerRadius(dpToPx(14));
         panelBg.setStroke(dpToPx(1), Color.parseColor("#4FC3F7"));
         controlPanel.setBackground(panelBg);
 
         TextView panelTitle = new TextView(this);
-        panelTitle.setText("Совместите зелёные кольца со скриншотом");
+        panelTitle.setText("Калибровка сетки");
         panelTitle.setTextColor(Color.parseColor("#4FC3F7"));
         panelTitle.setTextSize(13f);
         panelTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         controlPanel.addView(panelTitle);
 
+        // Ползунок общего масштаба
         int currScale = AppPrefs.getGridScalePercent(this);
         scaleValueText = new TextView(this);
         scaleValueText.setText("Размер сетки точек: " + currScale + "%");
@@ -79,7 +85,7 @@ public class CalibrationActivity extends Activity {
         controlPanel.addView(scaleValueText);
 
         SeekBar scaleSeek = new SeekBar(this);
-        scaleSeek.setMax(70); // 50% .. 120%
+        scaleSeek.setMax(100); // 50% .. 150%
         scaleSeek.setProgress(currScale - 50);
         scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -94,22 +100,48 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(scaleSeek);
 
+        // Ползунок ширины сетки (squash)
+        int currSquash = AppPrefs.getGridSquashPercent(this);
+        squashValueText = new TextView(this);
+        squashValueText.setText("Ширина сетки: " + currSquash + "%");
+        squashValueText.setTextColor(Color.WHITE);
+        squashValueText.setTextSize(13f);
+        squashValueText.setPadding(0, dpToPx(6), 0, dpToPx(2));
+        controlPanel.addView(squashValueText);
+
+        SeekBar squashSeek = new SeekBar(this);
+        squashSeek.setMax(90); // 60% .. 150%
+        squashSeek.setProgress(currSquash - 60);
+        squashSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int val = 60 + progress;
+                squashValueText.setText("Ширина сетки: " + val + "%");
+                AppPrefs.setGridSquashPercent(CalibrationActivity.this, val);
+                updatePreviewGeometry();
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        controlPanel.addView(squashSeek);
+
+        // Ползунок сдвига Y
         int currOffset = AppPrefs.getCanvasOffsetYDp(this);
         offsetValueText = new TextView(this);
-        offsetValueText.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
+        offsetValueText.setText("Сдвиг по вертикали: " + currOffset + " dp");
         offsetValueText.setTextColor(Color.WHITE);
         offsetValueText.setTextSize(13f);
         offsetValueText.setPadding(0, dpToPx(6), 0, dpToPx(2));
         controlPanel.addView(offsetValueText);
 
         SeekBar offsetSeek = new SeekBar(this);
-        offsetSeek.setMax(300); // -150 .. +150 dp
-        offsetSeek.setProgress(currOffset + 150);
+        offsetSeek.setMax(500); // -250 .. +250 dp
+        offsetSeek.setProgress(currOffset + 250);
         offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = progress - 150;
-                offsetValueText.setText("Сдвиг поля по вертикали: " + val + " dp");
+                int val = progress - 250;
+                offsetValueText.setText("Сдвиг по вертикали: " + val + " dp");
                 AppPrefs.setCanvasOffsetYDp(CalibrationActivity.this, val);
                 updatePreviewGeometry();
             }
@@ -205,21 +237,18 @@ public class CalibrationActivity extends Activity {
 
     private void updatePreviewGeometry() {
         DisplayMetrics dm = getResources().getDisplayMetrics();
-        int screenW = dm.widthPixels;
         int screenH = dm.heightPixels;
 
-        // Фиксированный размер окна линзы
-        int canvasSize = screenW - dpToPx(24);
+        int canvasSize = canvasLp.width;
         int offsetY = dpToPx(AppPrefs.getCanvasOffsetYDp(this));
         int canvasTopY = (screenH - canvasSize) / 2 + offsetY;
 
-        canvasLp.width = canvasSize;
-        canvasLp.height = canvasSize;
         canvasLp.topMargin = canvasTopY;
         previewCanvas.setLayoutParams(canvasLp);
         
-        previewCanvas.setGridScale(AppPrefs.getGridScalePercent(this) / 100f);
-        previewCanvas.invalidate();
+        float scale = AppPrefs.getGridScalePercent(this) / 100f;
+        float squash = AppPrefs.getGridSquashPercent(this) / 100f;
+        previewCanvas.setGridGeometry(scale, squash);
     }
 
     private int dpToPx(int dp) {

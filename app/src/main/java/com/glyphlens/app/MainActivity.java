@@ -26,10 +26,6 @@ public class MainActivity extends Activity {
 
     private Button toggleServiceBtn;
     private RadioGroup maxGlyphsGroup;
-    private TextView scaleLabel;
-    private SeekBar scaleSeek;
-    private TextView offsetLabel;
-    private SeekBar offsetSeek;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +37,6 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         updateServiceButtonState();
-        refreshCalibrationSlidersFromPrefs();
     }
 
     private View buildUi() {
@@ -161,7 +156,7 @@ public class MainActivity extends Activity {
         addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS");
 
         TextView calibHint = new TextView(this);
-        calibHint.setText("Для точной подгонки сделайте в Ingress скриншот открытого окна Glyph Hack и загрузите его в режиме калибровки:");
+        calibHint.setText("Для точной подгонки нажмите кнопку ниже, загрузите скриншот открытого окна Glyph Hack и совместите зелёные кольца линзы с кольцами игры.");
         calibHint.setTextColor(Color.parseColor("#B0BEC5"));
         calibHint.setTextSize(13f);
         calibHint.setPadding(0, dpToPx(2), 0, dpToPx(10));
@@ -177,44 +172,9 @@ public class MainActivity extends Activity {
         calibBtnLp.bottomMargin = dpToPx(10);
         root.addView(openCalibBtn, calibBtnLp);
 
-        scaleLabel = new TextView(this);
-        int currScale = AppPrefs.getGridScalePercent(this);
-        scaleLabel.setText("Размер сетки точек: " + currScale + "%");
-        scaleLabel.setTextColor(Color.WHITE);
-        scaleLabel.setPadding(0, dpToPx(6), 0, dpToPx(4));
-        root.addView(scaleLabel);
-
-        scaleSeek = new SeekBar(this);
-        scaleSeek.setMax(70); // 50% .. 120%
-        scaleSeek.setProgress(currScale - 50);
-        scaleSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = 50 + progress; scaleLabel.setText("Размер сетки точек: " + val + "%"); AppPrefs.setGridScalePercent(MainActivity.this, val); notifyServicePrefsChanged();
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-        root.addView(scaleSeek);
-
-        offsetLabel = new TextView(this);
-        int currOffset = AppPrefs.getCanvasOffsetYDp(this);
-        offsetLabel.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
-        offsetLabel.setTextColor(Color.WHITE);
-        offsetLabel.setPadding(0, dpToPx(12), 0, dpToPx(4));
-        root.addView(offsetLabel);
-
-        offsetSeek = new SeekBar(this);
-        offsetSeek.setMax(300); // -150 .. +150 dp
-        offsetSeek.setProgress(currOffset + 150);
-        offsetSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int val = progress - 150; offsetLabel.setText("Сдвиг поля по вертикали: " + val + " dp"); AppPrefs.setCanvasOffsetYDp(MainActivity.this, val); notifyServicePrefsChanged();
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
-        root.addView(offsetSeek);
-
         TextView creditsView = new TextView(this);
-        creditsView.setText("GlyphLens v1.2 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setText("GlyphLens v1.4 • Created by EstherTMB
+Crafted with Gemini AI assistance for Ingress Agents");
         creditsView.setTextColor(Color.parseColor("#607D8B"));
         creditsView.setTextSize(11.5f);
         creditsView.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -223,19 +183,6 @@ public class MainActivity extends Activity {
 
         updateServiceButtonState();
         return scrollView;
-    }
-
-    private void refreshCalibrationSlidersFromPrefs() {
-        if (scaleSeek != null && scaleLabel != null) {
-            int currScale = AppPrefs.getGridScalePercent(this);
-            scaleSeek.setProgress(currScale - 50);
-            scaleLabel.setText("Размер сетки точек: " + currScale + "%");
-        }
-        if (offsetSeek != null && offsetLabel != null) {
-            int currOffset = AppPrefs.getCanvasOffsetYDp(this);
-            offsetSeek.setProgress(currOffset + 150);
-            offsetLabel.setText("Сдвиг поля по вертикали: " + currOffset + " dp");
-        }
     }
 
     private void addSectionHeader(LinearLayout parent, String text) {

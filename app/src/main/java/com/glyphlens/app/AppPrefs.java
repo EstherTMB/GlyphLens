@@ -12,7 +12,8 @@ public class AppPrefs {
     private static final String KEY_SHOW_GUIDE = "show_guide";
     private static final String KEY_LINE_COLOR = "line_color";
     private static final String KEY_BG_ALPHA = "bg_alpha";
-    private static final String KEY_GRID_SCALE = "grid_scale"; // 50..120 (%)
+    private static final String KEY_GRID_SCALE = "grid_scale"; // 50..150 (%)
+    private static final String KEY_GRID_SQUASH = "grid_squash"; // 60..120 (%)
     private static final String KEY_CANVAS_OFFSET_Y = "canvas_offset_y";
     private static final String KEY_BUBBLE_X = "bubble_x";
     private static final String KEY_BUBBLE_Y = "bubble_y";
@@ -36,12 +37,14 @@ public class AppPrefs {
     public static int getBgAlphaPercent(Context context) { return prefs(context).getInt(KEY_BG_ALPHA, 55); }
     public static void setBgAlphaPercent(Context context, int percent) { prefs(context).edit().putInt(KEY_BG_ALPHA, Math.max(15, Math.min(75, percent))).apply(); }
 
-    // Теперь масштаб меняет только размер точек, а не окна
-    public static int getGridScalePercent(Context context) { return prefs(context).getInt(KEY_GRID_SCALE, 94); }
-    public static void setGridScalePercent(Context context, int percent) { prefs(context).edit().putInt(KEY_GRID_SCALE, Math.max(50, Math.min(120, percent))).apply(); }
+    public static int getGridScalePercent(Context context) { return prefs(context).getInt(KEY_GRID_SCALE, 100); }
+    public static void setGridScalePercent(Context context, int percent) { prefs(context).edit().putInt(KEY_GRID_SCALE, Math.max(50, Math.min(150, percent))).apply(); }
+
+    public static int getGridSquashPercent(Context context) { return prefs(context).getInt(KEY_GRID_SQUASH, 100); }
+    public static void setGridSquashPercent(Context context, int percent) { prefs(context).edit().putInt(KEY_GRID_SQUASH, Math.max(60, Math.min(150, percent))).apply(); }
 
     public static int getCanvasOffsetYDp(Context context) { return prefs(context).getInt(KEY_CANVAS_OFFSET_Y, 20); }
-    public static void setCanvasOffsetYDp(Context context, int offsetDp) { prefs(context).edit().putInt(KEY_CANVAS_OFFSET_Y, Math.max(-150, Math.min(150, offsetDp))).apply(); }
+    public static void setCanvasOffsetYDp(Context context, int offsetDp) { prefs(context).edit().putInt(KEY_CANVAS_OFFSET_Y, Math.max(-250, Math.min(250, offsetDp))).apply(); }
 
     public static int getBubbleX(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_X, defaultVal); }
     public static int getBubbleY(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_Y, defaultVal); }
