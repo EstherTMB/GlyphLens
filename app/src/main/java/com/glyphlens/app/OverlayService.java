@@ -119,8 +119,6 @@ public class OverlayService extends Service {
         int screenW = dm.widthPixels;
         int canvasSize = screenW - dpToPx(16);
         
-        // ВАЖНО: Добавляем FLAG_LAYOUT_NO_LIMITS и FLAG_LAYOUT_IN_SCREEN
-        // чтобы оверлей рисовался от физического края экрана, игнорируя статус-бар!
         canvasParams = new WindowManager.LayoutParams(canvasSize, canvasSize, overlayType, 
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | 
@@ -154,7 +152,6 @@ public class OverlayService extends Service {
         closeButton.setOnClickListener(v -> onCloseOverlayClicked());
         topBarLayout.addView(closeButton, closeLp);
 
-        // И для панели кнопок тоже добавляем флаги игнорирования системных панелей
         topBarParams = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, overlayType, 
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | 
@@ -268,10 +265,12 @@ public class OverlayService extends Service {
             glyphCanvasView.setCalibrationPreview(false);
         }
 
-        // Базовые флаги, которые должны быть ВСЕГДА
         int baseFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE 
                 | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS 
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+
+        // По умолчанию непрозрачность окна 100%
+        canvasParams.alpha = 1.0f;
 
         switch (newState) {
             case COLLAPSED:
@@ -290,12 +289,17 @@ public class OverlayService extends Service {
             case EXPANDED_REPLAY:
                 glyphCanvasView.setRecordMode(false);
                 glyphCanvasView.setDisplayedStroke(recordedStrokes[currentSlotIndex]);
+                // ФИКС Android 12+ Tapjacking (порог 0.8f) + ФИКС залипания тача в MIUI
+                canvasParams.alpha = 0.78f;
                 canvasParams.flags = baseFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                glyphCanvasView.setVisibility(View.GONE);
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
+                glyphCanvasView.setVisibility(View.VISIBLE);
                 break;
             case CALIBRATION:
                 glyphCanvasView.setRecordMode(false);
                 glyphCanvasView.setCalibrationPreview(true);
+                canvasParams.alpha = 0.78f;
                 canvasParams.flags = baseFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
                 windowManager.updateViewLayout(glyphCanvasView, canvasParams);
                 break;
@@ -335,10 +339,8 @@ public class OverlayService extends Service {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         int screenH = dm.heightPixels;
 
-        // Берем АБСОЛЮТНУЮ позицию
         int absoluteY = AppPrefs.getCanvasAbsoluteY(this);
         if (absoluteY == -1) {
-            // Только при самом первом запуске ставим примерно по центру
             absoluteY = screenH / 3;
             AppPrefs.setCanvasAbsoluteY(this, absoluteY);
         }

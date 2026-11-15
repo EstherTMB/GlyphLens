@@ -63,7 +63,6 @@ public class CalibrationActivity extends Activity {
         panelTitle.setTypeface(null, android.graphics.Typeface.BOLD);
         controlPanel.addView(panelTitle);
 
-        // Ползунок общего масштаба
         int currScale = AppPrefs.getGridScalePercent(this);
         scaleValueText = new TextView(this);
         scaleValueText.setText("Размер сетки точек: " + currScale + "%");
@@ -86,7 +85,6 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(scaleSeek);
 
-        // Ползунок ширины сетки (squash)
         int currSquash = AppPrefs.getGridSquashPercent(this);
         squashValueText = new TextView(this);
         squashValueText.setText("Ширина сетки: " + currSquash + "%");
@@ -109,7 +107,6 @@ public class CalibrationActivity extends Activity {
         });
         controlPanel.addView(squashSeek);
 
-        // Ползунок сдвига Y (Абсолютный)
         int currOffset = AppPrefs.getCanvasAbsoluteY(this);
         if (currOffset == -1) currOffset = screenHeightPx / 3;
 

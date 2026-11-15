@@ -12,11 +12,11 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -134,6 +134,24 @@ public class MainActivity extends Activity {
         }
         root.addView(colorRow);
 
+        final TextView alphaLabel = new TextView(this);
+        int currAlpha = AppPrefs.getBgAlphaPercent(this);
+        alphaLabel.setText("Непрозрачность фона линзы: " + currAlpha + "%");
+        alphaLabel.setTextColor(Color.WHITE);
+        alphaLabel.setPadding(0, dpToPx(14), 0, dpToPx(4));
+        root.addView(alphaLabel);
+
+        SeekBar alphaSeek = new SeekBar(this);
+        alphaSeek.setMax(60); // 15% .. 75%
+        alphaSeek.setProgress(currAlpha - 15);
+        alphaSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int val = 15 + progress; alphaLabel.setText("Непрозрачность фона линзы: " + val + "%"); AppPrefs.setBgAlphaPercent(MainActivity.this, val); notifyServicePrefsChanged();
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {} @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+        root.addView(alphaSeek);
+
         addSectionHeader(root, "3. КАЛИБРОВКА СЕТКИ ПОД INGRESS");
 
         TextView calibHint = new TextView(this);
@@ -160,7 +178,7 @@ public class MainActivity extends Activity {
         root.addView(openCalibBtn, calibBtnLp);
 
         TextView creditsView = new TextView(this);
-        creditsView.setText("GlyphLens v1.7 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
+        creditsView.setText("GlyphLens v1.8.1 • Created by EstherTMB\nCrafted with Gemini AI assistance for Ingress Agents");
         creditsView.setTextColor(Color.parseColor("#607D8B"));
         creditsView.setTextSize(11.5f);
         creditsView.setGravity(Gravity.CENTER_HORIZONTAL);

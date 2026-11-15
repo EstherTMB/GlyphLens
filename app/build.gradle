@@ -10,17 +10,28 @@ android {
         applicationId "com.glyphlens.app"
         minSdk 21
         targetSdk 34
-        versionCode 8
-        versionName "1.7"
+        versionCode 9
+        versionName "1.8.1"
         setProperty("archivesBaseName", "GlyphLens")
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('glyphlens.jks')
+            storePassword 'glyphlens'
+            keyAlias 'glyphlens'
+            keyPassword 'glyphlens'
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.debug
         }
         debug {
             minifyEnabled false
+            signingConfig signingConfigs.debug
         }
     }
 

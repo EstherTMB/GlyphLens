@@ -46,15 +46,6 @@ public class AppPrefs {
     public static int getCanvasAbsoluteY(Context context) { return prefs(context).getInt(KEY_CANVAS_ABSOLUTE_Y, -1); }
     public static void setCanvasAbsoluteY(Context context, int yPx) { prefs(context).edit().putInt(KEY_CANVAS_ABSOLUTE_Y, yPx).apply(); }
 
-    // Ползунок сдвига Y теперь меняет абсолютную координату
-    public static int getCanvasOffsetYDp(Context context) { 
-        // Не используем больше это старое значение
-        return 0; 
-    }
-    public static void setCanvasOffsetYDp(Context context, int offsetDp) { 
-        // Не используем
-    }
-
     public static int getBubbleX(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_X, defaultVal); }
     public static int getBubbleY(Context context, int defaultVal) { return prefs(context).getInt(KEY_BUBBLE_Y, defaultVal); }
     public static void saveBubblePos(Context context, int x, int y) { prefs(context).edit().putInt(KEY_BUBBLE_X, x).putInt(KEY_BUBBLE_Y, y).apply(); }
